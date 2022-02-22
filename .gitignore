@@ -1,0 +1,7 @@
+.idea/
+.ipynb_checkpoints/
+__pycache__
+catboost_info
+venv
+other
+trash

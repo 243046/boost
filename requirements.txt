@@ -1,0 +1,13 @@
+pandas
+numpy
+seaborn
+matplotlib
+scikit-learn
+catboost
+xgboost
+lightgbm
+tune-sklearn
+ray[tune]
+hyperopt
+optuna
+openpyxl
