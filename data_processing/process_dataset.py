@@ -46,4 +46,5 @@ def prepare_datasets_for_classification(datasets: dict, data_path='../data/'):
     return result
 
 
-# X, y = prepare_datasets_for_classification({'mushrooms.csv': ('class', 'all', None)})
+# if __name__ == '__main__':
+#     X, y = prepare_datasets_for_classification({'mushrooms.csv': ('class', 'all', None)})
