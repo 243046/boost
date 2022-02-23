@@ -1,5 +1,13 @@
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+
+
+def process_categorical(df):
+    categorical_columns = df.select_dtypes(include=['object']).columns
+    df[categorical_columns] = df[categorical_columns].apply(lambda col: LabelEncoder().fit_transform(col))
+    df[categorical_columns] = df[categorical_columns].astype(str)
+    return df
 
 
 def prepare_dataset_for_classification(
@@ -16,11 +24,14 @@ def prepare_dataset_for_classification(
     else:
         df = pd.read_csv(path, nrows=nrows)
 
-    df = df.dropna().convert_dtypes()
+    df = df.dropna().reset_index(drop=True)
+    df = process_categorical(df)
     y = df[y_col]
     X = df.drop(columns=y_col)
-    if desired_categorical_columns:
+    if isinstance(desired_categorical_columns, list):
         X[desired_categorical_columns] = X[desired_categorical_columns].astype(str)
+    elif desired_categorical_columns == 'all':
+        X = X.astype(str)
     _, y = np.unique(y, return_inverse=True)
     return X, y
 
@@ -35,4 +46,4 @@ def prepare_datasets_for_classification(datasets: dict, data_path='../data/'):
     return result
 
 
-#a = prepare_datasets_for_classification({'mushrooms.csv': ('class', [], None)})
+# X, y = prepare_datasets_for_classification({'mushrooms.csv': ('class', 'all', None)})
