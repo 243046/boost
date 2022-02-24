@@ -5,3 +5,4 @@ catboost_info
 venv
 other
 trash
+/data/creditcard_full.csv
