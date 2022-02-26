@@ -24,14 +24,13 @@ class DataModelsWrapper(ModelsWrapper):
         datasets_names = list(self.param_dict.keys())
 
         for dataset_name, (X, y, models) in self.param_dict.items():
-            name = dataset_name.split('.')[0]
             results, runtimes = self._score_single_dataset(X, y, models)
             mean_scores = self._get_mean_scores(results)
 
             all_datasets_results = pd.concat([all_datasets_results, mean_scores])
-            results['dataset'] = name
+            results['dataset'] = dataset_name
             all_datasets_runtimes = pd.concat([all_datasets_runtimes, runtimes])
-            runtimes['dataset'] = name
+            runtimes['dataset'] = dataset_name
             results_for_plotting = pd.concat([results_for_plotting, results])
             runtimes_for_plotting = pd.concat([runtimes_for_plotting, runtimes])
 

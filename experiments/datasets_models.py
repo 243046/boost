@@ -30,29 +30,29 @@ if __name__ == '__main__':
     #X_1, y_1 = make_classification(n_samples=1000, n_features=10, n_classes=3, n_informative=5)
     #X_1, y_1 = X_1[:100, :], y_1[:100]
     d = {
-        'mushrooms.csv': ('class', [], 100),
-        'mushrooms1.csv': ('class', [], 200)
+        'mushrooms.csv': ('class', 'all', None),
+        'adult.csv': ('profit', [], None),
+        'prostate.csv': ('target', [], None),
+        'creditcard.csv': ('Class', [], None)
     }
 
-    X_1, y_1, X_2, y_2 = prepare_datasets_for_classification(d)
+    X_1, y_1, X_2, y_2, X_3, y_3, X_4, y_4 = prepare_datasets_for_classification(d)
 
     boosting_params_1 = {
-    'n_estimators': [50, 100],
+        'n_estimators': [50, 100, 150],
+        'learning_rate': stats.loguniform(0.01, 0.1)
     }
     xgb_params_1 = {
-        'n_estimators': [50, 100],
-       # 'max_depth': [4, 5],
-       # 'learning_rate': [0.05, 0.1]
+        'n_estimators': [50, 100, 150],
+        'learning_rate': stats.loguniform(0.01, 0.1)
     }
     lgbm_params_1 = {
-        'n_estimators': [50, 100],
-       # 'max_depth': [4, 5],
-       # 'learning_rate': [0.05, 0.1]
+        'n_estimators': [50, 100, 150],
+        'learning_rate': stats.loguniform(0.01, 0.1)
     }
     catboost_params_1 = {
-        'iterations': [50, 100],
-       # 'depth': [4, 5],
-       # 'learning_rate': [0.05, 0.1]
+        'n_estimators': [50, 100, 150],
+        'learning_rate': stats.loguniform(0.01, 0.1)
     }
 
     models_1 = {
@@ -63,25 +63,19 @@ if __name__ == '__main__':
         'CatBoost': (CatBoostClassifier(verbose=False, random_state=123), catboost_params_1)
     }
 
-    #X_2, y_2 = make_classification()
-
     boosting_params_2 = {
-        'n_estimators': [50, 100],
+        'subsample': stats.uniform(0.5, 1.0)
     }
     xgb_params_2 = {
-        'n_estimators': [50, 100],
-        # 'max_depth': [4, 5],
-        # 'learning_rate': [0.05, 0.1]
+        'reg_alpha': stats.loguniform(1, 10),
+        'reg_lambda': stats.loguniform(1, 10)
     }
     lgbm_params_2 = {
-        'n_estimators': [50, 100],
-        # 'max_depth': [4, 5],
-        # 'learning_rate': [0.05, 0.1]
+        'reg_alpha': stats.loguniform(1, 10),
+        'reg_lambda': stats.loguniform(1, 10)
     }
     catboost_params_2 = {
-        'iterations': [50, 100],
-        # 'depth': [4, 5],
-        # 'learning_rate': [0.05, 0.1]
+        'reg_lambda': stats.loguniform(1, 10)
     }
 
     models_2 = {
@@ -89,16 +83,18 @@ if __name__ == '__main__':
         'XGBoost': (XGBClassifier(use_label_encoder=False,
                                   eval_metric='logloss', random_state=123), xgb_params_2),
         'LightGBM': (LGBMClassifier(), lgbm_params_2),
-        'CatBoost': (CatBoostClassifier(verbose=False, random_state=123), catboost_params_2)
+        'CatBoost': (CatBoostClassifier(n_estimators=100, verbose=False, random_state=123), catboost_params_2)
     }
 
     param_dict = {
-        'dataset_1': (X_1, y_1, models_1),
-        'dataset_2': (X_2, y_2, models_2)
+        'mushrooms': (X_1, y_1, models_1),
+        'adult': (X_2, y_2, models_2),
+        'prostate': (X_3, y_3, models_2.copy()),
+        'credit card': (X_4, y_4, models_2.copy())
     }
 
     all_results, all_runtimes, results_for_plotting, runtimes_for_plotting = run(param_dict=param_dict,
                                                                                  mode='randomized', scoring='accuracy')
 
-    # results_for_plotting.to_excel('../results/all_results.xlsx', index=False)
-    # runtimes_for_plotting.to_excel('../results/all_runtimes.xlsx', index=False)
+    results_for_plotting.to_excel('../results/all_results.xlsx', index=False)
+    runtimes_for_plotting.to_excel('../results/all_runtimes.xlsx', index=False)
