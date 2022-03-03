@@ -22,8 +22,8 @@ def visualize_results_on_boxplots(
 
 
 if __name__ == '__main__':
-    visualize_results_on_boxplots('../results/all_datasets_results.xlsx',
-                                  '../plots/all_datasets_results_boxplots.pdf',
+    visualize_results_on_boxplots('../results/results_no_search.xlsx',
+                                  '../plots/results_no_search_boxplots.pdf',
                                   palette='Set2',
                                   save=True
                                   )

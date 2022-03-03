@@ -26,8 +26,8 @@ def visualize_runtimes_on_barplots(
 
 
 if __name__ == '__main__':
-    visualize_runtimes_on_barplots('../results/all_datasets_runtimes.xlsx',
-                                   '../plots/all_datasets_runtimes_barplots.pdf',
+    visualize_runtimes_on_barplots('../results/results_no_search.xlsx',
+                                   '../plots/runtimes_no_search.pdf',
                                    palette='gnuplot',
                                    save=True
                                    )
