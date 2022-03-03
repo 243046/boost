@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
+from data_processing.stratified_sample_dataset import stratified_sample
+
 
 def process_categorical(df):
     categorical_columns = df.select_dtypes(include=['object']).columns
@@ -26,6 +28,8 @@ def prepare_dataset_for_classification(
 
     df = df.dropna().reset_index(drop=True)
     df = process_categorical(df)
+    if nrows:
+        df = stratified_sample(df, y_col, nrows)
     y = df[y_col]
     X = df.drop(columns=y_col)
     if isinstance(desired_categorical_columns, list):
