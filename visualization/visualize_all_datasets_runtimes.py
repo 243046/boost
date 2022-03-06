@@ -3,6 +3,8 @@ import matplotlib.ticker as ticker
 import pandas as pd
 import seaborn as sns
 
+from visualization.palettes import default_palette
+
 sns.set_style('whitegrid')
 
 
@@ -21,13 +23,14 @@ def visualize_runtimes_on_barplots(
     for c in ax.containers:
         labels = [f'{v.get_width():.2f}s' for v in c]
         ax.bar_label(c, labels=labels, label_type='edge', fontsize=10)
-    c
+    if save:
+        fig.savefig(out_path, bbox_inches='tight')
 
 
 if __name__ == '__main__':
-    name = 'ordinary'
+    name = 'no_search'
     visualize_runtimes_on_barplots(f'../results/runtimes_{name}.xlsx',
                                    f'../plots/runtimes_{name}_barplots.pdf',
-                                   palette='gnuplot',
+                                   palette=default_palette,
                                    save=True
                                    )

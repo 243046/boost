@@ -1,14 +1,15 @@
+from time import time
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-from time import time
-import pandas as pd
 import numpy as np
+import pandas as pd
 import seaborn as sns
+from catboost import CatBoostClassifier
+from lightgbm import LGBMClassifier
 from sklearn.datasets import make_classification
 from sklearn.ensemble import GradientBoostingClassifier
 from xgboost import XGBClassifier
-from lightgbm import LGBMClassifier
-from catboost import CatBoostClassifier
 
 from visualization.palettes import default_palette
 

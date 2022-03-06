@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
+from visualization.palettes import default_palette
+
 sns.set_style('whitegrid')
 
 
@@ -22,9 +24,9 @@ def visualize_results_on_boxplots(
 
 
 if __name__ == '__main__':
-    name = 'ordinary'
+    name = 'no_search'
     visualize_results_on_boxplots(f'../results/results_{name}.xlsx',
                                   f'../plots/results_{name}_boxplots.pdf',
-                                  palette='Set2',
+                                  palette=default_palette,
                                   save=True
                                   )
