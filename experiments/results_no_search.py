@@ -49,7 +49,7 @@ if __name__ == '__main__':
         'creditcard.csv': ('Class', [], None),
         'prostate.csv': ('target', [], None),
         'leukemia.csv': ('target', [], None),
-        'weather_dataset.csv': ('target', [], 300)
+        'weather_dataset.csv': ('target', [], 200)
     }
 
     X_1, y_1, X_2, y_2, X_3, y_3, X_4, y_4, X_5, y_5, X_6, y_6, X_7, y_7 = prepare_datasets_for_classification(d)
@@ -93,10 +93,10 @@ if __name__ == '__main__':
                                                                                  mode='randomized', scoring='accuracy')
 
     _, _, results_for_plotting_nlp, runtimes_for_plotting_nlp = run_nlp(param_dict=param_dict_nlp,
-                                                            mode='randomized',
-                                                            scoring='accuracy',
-                                                            tfidf_kws=tfidf_kws
-                                                            )
+                                                                        mode='randomized',
+                                                                        scoring='accuracy',
+                                                                        tfidf_kws=tfidf_kws
+                                                                        )
 
     all_results = pd.concat([results_for_plotting, results_for_plotting_nlp])
     all_runtimes = pd.concat([runtimes_for_plotting, runtimes_for_plotting_nlp])

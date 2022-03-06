@@ -69,5 +69,6 @@ if __name__ == '__main__':
     all_results, all_runtimes, results_for_plotting, runtimes_for_plotting = run(param_dict=param_dict,
                                                                                  mode='randomized', scoring='accuracy')
 
-    results_for_plotting.to_excel('../results/results_ordinary.xlsx', index=False)
-    runtimes_for_plotting.to_excel('../results/runtimes_ordinary.xlsx', index=False)
+    name = 'ordinary'
+    results_for_plotting.to_excel(f'../results/results_{name}.xlsx', index=False)
+    runtimes_for_plotting.to_excel(f'../results/runtimes_{name}.xlsx', index=False)

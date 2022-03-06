@@ -13,7 +13,8 @@ class ClassifierNLP(Classifier):
             param_grid,
             tuner='hyperopt',
             scoring='accuracy',
-            tfidf_kws={'ngram_range': (1, 2), 'min_df': 3, 'max_features': 10000}
+            tfidf_kws={'ngram_range': (1, 2), 'min_df': 3, 'max_features': 10000},
+            svd_kws={'n_components': 100}
     ):
 
         super().__init__(model=model,
@@ -23,11 +24,12 @@ class ClassifierNLP(Classifier):
                          )
 
         self.tfidf_kws = tfidf_kws
+        self.svd_kws = svd_kws
 
     def _make_pipeline(self):
         self.pipeline = Pipeline([
             ('tf-idf', TfidfVectorizer(**self.tfidf_kws)),
-            ('svd', TruncatedSVD(n_components=100)),
+            ('svd', TruncatedSVD(**self.svd_kws)),
             ('clf', self.model)
         ])
 
@@ -38,14 +40,16 @@ class ClassifierNLPRandomSearch(ClassifierNLP):
             model,
             param_grid,
             scoring='accuracy',
-            tfidf_kws={'ngram_range': (1, 2), 'min_df': 3, 'max_features': 10000}
+            tfidf_kws={'ngram_range': (1, 2), 'min_df': 3, 'max_features': 10000},
+            svd_kws={'n_components': 100}
     ):
 
         super().__init__(model=model,
                          param_grid=param_grid,
                          tuner=None,
                          scoring=scoring,
-                         tfidf_kws=tfidf_kws
+                         tfidf_kws=tfidf_kws,
+                         svd_kws=svd_kws
                          )
 
     def _fit_clf(self, X, y):

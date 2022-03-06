@@ -100,7 +100,8 @@ if __name__ == '__main__':
                                                                         tfidf_kws=tfidf_kws
                                                                         )
 
+    name = 'high_dimensional'
     all_results = pd.concat([results_for_plotting, results_for_plotting_nlp])
     all_runtimes = pd.concat([runtimes_for_plotting, runtimes_for_plotting_nlp])
-    all_results.to_excel('../results/results_high_dimensional.xlsx', index=False)
-    all_runtimes.to_excel('../results/runtimes_high_dimensional.xlsx', index=False)
+    all_results.to_excel(f'../results/results_{name}.xlsx', index=False)
+    all_runtimes.to_excel(f'../results/runtimes_{name}.xlsx', index=False)

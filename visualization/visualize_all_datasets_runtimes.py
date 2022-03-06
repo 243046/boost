@@ -21,13 +21,13 @@ def visualize_runtimes_on_barplots(
     for c in ax.containers:
         labels = [f'{v.get_width():.2f}s' for v in c]
         ax.bar_label(c, labels=labels, label_type='edge', fontsize=10)
-    if save:
-        fig.savefig(out_path, bbox_inches='tight')
+    c
 
 
 if __name__ == '__main__':
-    visualize_runtimes_on_barplots('../results/results_no_search.xlsx',
-                                   '../plots/runtimes_no_search.pdf',
+    name = 'ordinary'
+    visualize_runtimes_on_barplots(f'../results/runtimes_{name}.xlsx',
+                                   f'../plots/runtimes_{name}_barplots.pdf',
                                    palette='gnuplot',
                                    save=True
                                    )

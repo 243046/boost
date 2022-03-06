@@ -8,7 +8,8 @@ class ModelsWrapperNLP(ModelsWrapper):
             models,
             tuner='hyperopt',
             scoring='accuracy',
-            tfidf_kws={'ngram_range': (1, 2), 'min_df': 3, 'max_features': 10000}
+            tfidf_kws={'ngram_range': (1, 2), 'min_df': 3, 'max_features': 10000},
+            svd_kws={'n_components': 100}
     ):
 
         super().__init__(models=models,
@@ -17,6 +18,7 @@ class ModelsWrapperNLP(ModelsWrapper):
                          )
 
         self.tfidf_kws = tfidf_kws
+        self.svd_kws = svd_kws
 
     def _score_single_model(self, X, y, model, param_grid):
         clf = ClassifierNLP(model, param_grid, tuner=self.tuner, scoring=self.scoring, tfidf_kws=self.tfidf_kws)

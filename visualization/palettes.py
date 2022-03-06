@@ -1,0 +1,1 @@
+default_palette = ['#008000', '#189fdd', '#ef4927', '#ffcc00']
