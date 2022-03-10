@@ -28,9 +28,9 @@ def visualize_runtimes_on_barplots(
 
 
 if __name__ == '__main__':
-    name = 'no_search'
+    name = 'hyperparameters'
     visualize_runtimes_on_barplots(f'../results/runtimes_{name}.xlsx',
                                    f'../plots/runtimes_{name}_barplots.pdf',
-                                   palette=default_palette,
+                                   palette='rainbow', # default_palette,
                                    save=True
                                    )

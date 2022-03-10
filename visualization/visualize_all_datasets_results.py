@@ -24,9 +24,9 @@ def visualize_results_on_boxplots(
 
 
 if __name__ == '__main__':
-    name = 'no_search'
+    name = 'hyperparameters'
     visualize_results_on_boxplots(f'../results/results_{name}.xlsx',
                                   f'../plots/results_{name}_boxplots.pdf',
-                                  palette=default_palette,
+                                  palette='rainbow', # default_palette,
                                   save=True
                                   )

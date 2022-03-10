@@ -16,7 +16,6 @@ from visualization.palettes import default_palette
 sns.set_style('whitegrid')
 
 
-
 def runtimes_features(models, n_features_list, n_samples=100):
     cols = models.keys()
     results = []
