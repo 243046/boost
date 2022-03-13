@@ -50,7 +50,7 @@ if __name__ == '__main__':
     X_1, y_1, X_2, y_2, X_3, y_3 = prepare_datasets_for_classification(d)
 
     X_4, y_4 = prepare_nlp_for_classification(
-        dataset_name='IMDB_dataset.csv',
+        dataset_name='imdb_dataset.csv',
         text_column='review_cleared',
         y_col='sentiment',
         nrows=3000

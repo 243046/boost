@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     # df = pd.read_csv(f'../data/IMDB_Dataset_full.csv')
     # sampled = stratified_sample(df, 'sentiment', 10000)
-    # sampled.to_csv('../data/IMDB_Dataset.csv', index=False)
+    # sampled.to_csv('../data/imdb_dataset.csv', index=False)
 
     df = pd.read_csv(f'../data/weather_dataset_full.csv')
     sampled = stratified_sample(df, 'target', 750)

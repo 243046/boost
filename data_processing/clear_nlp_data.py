@@ -4,7 +4,7 @@ from data_processing.text_processor import TextProcessor
 
 
 if __name__ == '__main__':
-    df = pd.read_csv('../data/IMDB_Dataset.csv')
+    df = pd.read_csv('../data/imdb_dataset.csv')
     X = df['review']
     processed = TextProcessor().fit_transform(X)
     df.insert(loc=1, column='review_cleared', value=processed)

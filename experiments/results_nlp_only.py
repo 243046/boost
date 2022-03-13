@@ -27,7 +27,7 @@ def run(param_dict, mode='randomized', tuner='hyperopt', scoring='accuracy',
 
 if __name__ == '__main__':
     X, y = prepare_nlp_for_classification(
-        dataset_name='IMDB_dataset.csv',
+        dataset_name='imdb_dataset.csv',
         text_column='review_cleared',
         y_col='sentiment',
         nrows=1000
