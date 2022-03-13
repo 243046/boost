@@ -47,7 +47,7 @@ class Classifier:
                            scoring=self.scoring,
                            cv=self.inner_cv,
                            early_stopping=False,
-                           n_jobs=1,
+                           n_jobs=-1,
                            random_state=123
                            )
         clf.fit(X, y)
