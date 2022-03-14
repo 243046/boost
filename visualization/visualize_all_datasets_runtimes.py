@@ -28,9 +28,10 @@ def visualize_runtimes_on_barplots(
 
 
 if __name__ == '__main__':
-    name = 'hyperparameters'
-    visualize_runtimes_on_barplots(f'../results/runtimes_{name}.xlsx',
-                                   f'../plots/runtimes_{name}_barplots.pdf',
-                                   palette='rainbow', # default_palette,
+    name = 'ordinary_TPE'
+    suffix = 'colab'
+    visualize_runtimes_on_barplots(f'../results_{suffix}/runtimes_{name}.xlsx',
+                                   f'../plots_{suffix}/runtimes_{name}_barplots.pdf',
+                                   palette=default_palette,
                                    save=True
                                    )

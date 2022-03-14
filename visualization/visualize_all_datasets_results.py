@@ -24,9 +24,10 @@ def visualize_results_on_boxplots(
 
 
 if __name__ == '__main__':
-    name = 'hyperparameters'
-    visualize_results_on_boxplots(f'../results/results_{name}.xlsx',
-                                  f'../plots/results_{name}_boxplots.pdf',
-                                  palette='rainbow', # default_palette,
+    name = 'ordinary_TPE'
+    suffix = 'colab'
+    visualize_results_on_boxplots(f'../results_{suffix}/results_{name}.xlsx',
+                                  f'../plots_{suffix}/results_{name}_boxplots.pdf',
+                                  palette=default_palette,
                                   save=True
                                   )

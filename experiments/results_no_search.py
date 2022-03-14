@@ -67,10 +67,12 @@ if __name__ == '__main__':
     }
 
     models = {
-        'Gradient Boosting': (GradientBoostingClassifier(), params),
-        'XGBoost': (XGBClassifier(reg_lambda=2, use_label_encoder=False, eval_metric='logloss', random_state=123), params),
-        'LightGBM': (LGBMClassifier(reg_lambda=2), params),
-        'CatBoost': (CatBoostClassifier(n_estimators=100, reg_lambda=2, verbose=False, random_state=123), params)
+        'Gradient Boosting': (GradientBoostingClassifier(**params), {}),
+        'XGBoost': (XGBClassifier(**params, reg_lambda=2, use_label_encoder=False, eval_metric='logloss',
+                                  random_state=123), {}),
+        'LightGBM': (LGBMClassifier(**params, reg_lambda=2), {}),
+        'CatBoost': (CatBoostClassifier(**params, n_estimators=100, reg_lambda=2, verbose=False,
+                                        random_state=123), {})
     }
 
     param_dict = {
