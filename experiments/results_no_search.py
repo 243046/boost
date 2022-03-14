@@ -62,8 +62,8 @@ if __name__ == '__main__':
     )
 
     params = {
-        'n_estimators': [50],
-        'max_depth': [4]
+        'n_estimators': 50
+        'max_depth': 4
     }
 
     models = {
