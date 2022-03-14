@@ -41,15 +41,18 @@ class Classifier:
     def _fit_clf(self, X, y):
         self._make_cv()
         grid = self._add_prefix_to_grid(self.param_grid, 'clf')
-        clf = TuneSearchCV(self.pipeline,
-                           param_distributions=grid,
-                           search_optimization=self.tuner,
-                           scoring=self.scoring,
-                           cv=self.inner_cv,
-                           early_stopping=False,
-                           n_jobs=-1,
-                           random_state=123
-                           )
+        if self.param_grid:
+            clf = TuneSearchCV(self.pipeline,
+                               param_distributions=grid,
+                               search_optimization=self.tuner,
+                               scoring=self.scoring,
+                               cv=self.inner_cv,
+                               early_stopping=False,
+                               n_jobs=-1,
+                               random_state=123
+                               )
+        else:
+            clf = self.pipeline
         clf.fit(X, y)
         self.clf = clf
 
@@ -60,8 +63,10 @@ class Classifier:
         return self
 
     def cv_score(self, X, y):
-        return cross_val_score(self.clf.best_estimator_, X, y,
-                                scoring=self.scoring, cv=self.outer_cv, n_jobs=-1)
+        if self.param_grid:
+            return cross_val_score(self.clf.best_estimator_, X, y, scoring=self.scoring, cv=self.outer_cv, n_jobs=-1)
+        else:
+            return cross_val_score(self.clf, X, y, scoring=self.scoring, cv=self.outer_cv, n_jobs=-1)
 
     def score(self, X, y):
         return self.cv_score(X, y).mean()
@@ -78,12 +83,15 @@ class ClassifierRandomSearch(Classifier):
     def _fit_clf(self, X, y):
         self._make_cv()
         grid = self._add_prefix_to_grid(self.param_grid, 'clf')
-        clf = RandomizedSearchCV(self.pipeline,
-                                 param_distributions=grid,
-                                 scoring=self.scoring,
-                                 cv=self.inner_cv,
-                                 n_jobs=-1,
-                                 random_state=123
-                                 )
+        if self.param_grid:
+            clf = RandomizedSearchCV(self.pipeline,
+                                     param_distributions=grid,
+                                     scoring=self.scoring,
+                                     cv=self.inner_cv,
+                                     n_jobs=-1,
+                                     random_state=123
+                                     )
+        else:
+            clf = self.pipeline
         clf.fit(X, y)
         self.clf = clf
