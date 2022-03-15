@@ -97,5 +97,7 @@ class ClassifierRandomSearch(Classifier):
             clf = self.pipeline
         clf.fit(X, y)
         print(clf.best_estimator_)
-        pd.DataFrame(clf.cv_results_).to_excel('res.xlsx', index=False)
+        df = pd.DataFrame(clf.cv_results_)
+        print(df)
+        df.to_excel('res.xlsx', index=False)
         self.clf = clf
