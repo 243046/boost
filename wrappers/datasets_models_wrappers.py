@@ -19,8 +19,7 @@ class DataModelsWrapper(ModelsWrapper):
         return results.mean().to_frame().T
 
     def _fit(self):
-        all_datasets_results, all_datasets_runtimes, results_for_plotting, runtimes_for_plotting = \
-            pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        all_datasets_results, all_datasets_runtimes, results_for_plotting, runtimes_for_plotting = [pd.DataFrame()]*4
         datasets_names = list(self.param_dict.keys())
 
         for dataset_name, (X, y, models) in self.param_dict.items():

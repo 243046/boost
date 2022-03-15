@@ -4,6 +4,7 @@ from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.pipeline import Pipeline
 from category_encoders.cat_boost import CatBoostEncoder
 from tune_sklearn import TuneSearchCV
+import pandas as pd
 
 # from data_processing.cat_encoder import PermutedCatBoostEncoder
 from utils.timer import timeit
@@ -54,6 +55,7 @@ class Classifier:
         else:
             clf = self.pipeline
         clf.fit(X, y)
+        print(clf.best_estimator_)
         self.clf = clf
 
     @timeit
@@ -94,4 +96,6 @@ class ClassifierRandomSearch(Classifier):
         else:
             clf = self.pipeline
         clf.fit(X, y)
+        print(clf.best_estimator_)
+        pd.DataFrame(clf.cv_results_).to_excel('res.xlsx', index=False)
         self.clf = clf
