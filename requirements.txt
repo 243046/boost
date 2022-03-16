@@ -4,7 +4,7 @@ seaborn
 matplotlib
 scikit-learn==1.0.2
 category_encoders
-catboost==1.0.4
+catboost
 xgboost==1.5.2
 lightgbm==3.3.2
 tune-sklearn
@@ -15,5 +15,3 @@ openpyxl
 nltk==3.7
 spacy==3.2.2
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.2.0/en_core_web_sm-3.2.0.tar.gz
-
-scipy==1.8.0
