@@ -61,17 +61,12 @@ if __name__ == '__main__':
         nrows=2000
     )
 
-    params = {
-        'n_estimators': 50
-        'max_depth': 4
-    }
-
     models = {
-        'Gradient Boosting': (GradientBoostingClassifier(**params), {}),
-        'XGBoost': (XGBClassifier(**params, reg_lambda=2, use_label_encoder=False, eval_metric='logloss',
+        'Gradient Boosting': (GradientBoostingClassifier(), {}),
+        'XGBoost': (XGBClassifier(use_label_encoder=False, eval_metric='logloss',
                                   random_state=123), {}),
-        'LightGBM': (LGBMClassifier(**params, reg_lambda=2), {}),
-        'CatBoost': (CatBoostClassifier(**params, n_estimators=100, reg_lambda=2, verbose=False,
+        'LightGBM': (LGBMClassifier(), {}),
+        'CatBoost': (CatBoostClassifier(n_estimators=100, verbose=False,
                                         random_state=123), {})
     }
 
@@ -104,3 +99,8 @@ if __name__ == '__main__':
     all_runtimes = pd.concat([runtimes_for_plotting, runtimes_for_plotting_nlp])
     all_results.to_excel('../results/results_no_search.xlsx', index=False)
     all_runtimes.to_excel('../results/runtimes_no_search.xlsx', index=False)
+
+
+# TODO: runtimes w zależności od rozmiaru data na colabie, ordered vs plain
+#  poprawić gridy w high dimensional
+#  odpalić randomized search dla high dim

@@ -55,7 +55,6 @@ class Classifier:
         else:
             clf = self.pipeline
         clf.fit(X, y)
-        print(clf.best_estimator_)
         self.clf = clf
 
     @timeit
@@ -96,8 +95,4 @@ class ClassifierRandomSearch(Classifier):
         else:
             clf = self.pipeline
         clf.fit(X, y)
-        print(clf.best_estimator_)
-        df = pd.DataFrame(clf.cv_results_)
-        print(df)
-        df.to_excel('res.xlsx', index=False)
         self.clf = clf
