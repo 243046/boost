@@ -28,7 +28,7 @@ def visualize_runtimes_on_barplots(
 
 
 if __name__ == '__main__':
-    name = 'ordinary_TPE'
+    name = 'high_dimensional'
     suffix = 'colab'
     visualize_runtimes_on_barplots(f'../results_{suffix}/runtimes_{name}.xlsx',
                                    f'../plots_{suffix}/runtimes_{name}_barplots.pdf',

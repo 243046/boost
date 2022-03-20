@@ -99,8 +99,3 @@ if __name__ == '__main__':
     all_runtimes = pd.concat([runtimes_for_plotting, runtimes_for_plotting_nlp])
     all_results.to_excel('../results/results_no_search.xlsx', index=False)
     all_runtimes.to_excel('../results/runtimes_no_search.xlsx', index=False)
-
-
-# TODO: runtimes w zależności od rozmiaru data na colabie, ordered vs plain
-#  poprawić gridy w high dimensional
-#  odpalić randomized search dla high dim

@@ -16,14 +16,14 @@ if __name__ == '__main__':
     # sampled = stratified_sample(df, 'Class', 8000)
     # sampled.to_csv('../data/creditcard.csv', index=False)
     #
-    # adult = pd.read_csv(f'../data/adult_full.csv')
-    # sampled = stratified_sample(adult, 'profit', 10000)
-    # sampled.to_csv('../data/adult.csv', index=False)
+    adult = pd.read_csv(f'../data/adult_full.csv')
+    sampled = stratified_sample(adult, 'profit', 10000)
+    sampled.to_csv('../data/adult.csv', index=False)
 
     # df = pd.read_csv(f'../data/IMDB_Dataset_full.csv')
     # sampled = stratified_sample(df, 'sentiment', 10000)
     # sampled.to_csv('../data/imdb_dataset.csv', index=False)
 
-    df = pd.read_csv(f'../data/weather_dataset_full.csv')
-    sampled = stratified_sample(df, 'target', 750)
-    sampled.to_csv('../data/weather_dataset.csv', index=False)
+    # df = pd.read_csv(f'../data/weather_dataset_full.csv')
+    # sampled = stratified_sample(df, 'target', 750)
+    # sampled.to_csv('../data/weather_dataset.csv', index=False)

@@ -24,7 +24,7 @@ def visualize_results_on_boxplots(
 
 
 if __name__ == '__main__':
-    name = 'ordinary_TPE'
+    name = 'high_dimensional'
     suffix = 'colab'
     visualize_results_on_boxplots(f'../results_{suffix}/results_{name}.xlsx',
                                   f'../plots_{suffix}/results_{name}_boxplots.pdf',
