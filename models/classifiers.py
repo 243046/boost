@@ -1,9 +1,9 @@
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.pipeline import Pipeline
+from category_encoders.cat_boost import CatBoostEncoder
 from tune_sklearn import TuneSearchCV
 
-from data_processing.cat_encoder import PermutedCatBoostEncoder
 from utils.timer import timeit
 
 
@@ -23,7 +23,7 @@ class Classifier:
 
     def _make_pipeline(self):
         self.pipeline = Pipeline([
-            ('encoder', PermutedCatBoostEncoder()),
+            ('encoder', CatBoostEncoder()),
             ('clf', self.model)
         ])
 
