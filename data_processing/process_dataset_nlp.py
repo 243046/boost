@@ -8,7 +8,7 @@ def prepare_nlp_for_classification(
         text_column,
         y_col,
         nrows=None,
-        data_path='../data/'
+        data_path='../../data/'
 ):
 
     path = data_path + dataset_name

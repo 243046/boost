@@ -52,7 +52,7 @@ class ClassifierNLPRandomSearch(ClassifierNLP):
                          svd_kws=svd_kws
                          )
 
-    def _make_clf(self, X, y):
+    def _fit_clf(self, X, y):
         self._make_cv()
         grid = self._add_prefix_to_grid(self.param_grid, 'clf')
         self.clf = RandomizedSearchCV(self.pipeline,

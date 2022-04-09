@@ -85,5 +85,5 @@ if __name__ == '__main__':
     _, _, results_for_plotting, runtimes_for_plotting = run(param_dict=param_dict, mode='randomized', scoring='accuracy')
 
     name = 'hyperparameters'
-    results_for_plotting.to_excel(f'../results/results_{name}.xlsx', index=False)
-    runtimes_for_plotting.to_excel(f'../results/runtimes_{name}.xlsx', index=False)
+    results_for_plotting.to_excel(f'../../results/results_{name}.xlsx', index=False)
+    runtimes_for_plotting.to_excel(f'../../results/runtimes_{name}.xlsx', index=False)

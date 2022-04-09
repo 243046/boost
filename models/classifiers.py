@@ -35,7 +35,7 @@ class Classifier:
         self.inner_cv = StratifiedKFold(n_splits=n_inner, shuffle=True, random_state=123)
         self.outer_cv = StratifiedKFold(n_splits=n_outer, shuffle=True, random_state=123)
 
-    def _make_clf(self, X, y):
+    def _fit_clf(self, X, y):
         self._make_cv()
         grid = self._add_prefix_to_grid(self.param_grid, 'clf')
         if self.param_grid:
@@ -50,15 +50,18 @@ class Classifier:
                                )
         else:
             clf = self.pipeline
+        clf.fit(X, y)
         self.clf = clf
 
     def fit(self, X, y):
         self._make_pipeline()
-        self._make_clf(X, y)
+        self._fit_clf(X, y)
         return self
 
     @timeit
     def cv_score(self, X, y):
+        if self.param_grid:
+            return cross_val_score(self.clf.best_estimator_, X, y, scoring=self.scoring, cv=self.outer_cv, n_jobs=-1)
         return cross_val_score(self.clf, X, y, scoring=self.scoring, cv=self.outer_cv, n_jobs=-1)
 
     def score(self, X, y):
@@ -73,7 +76,7 @@ class ClassifierRandomSearch(Classifier):
                          scoring=scoring
                          )
 
-    def _make_clf(self, X, y):
+    def _fit_clf(self, X, y):
         self._make_cv()
         grid = self._add_prefix_to_grid(self.param_grid, 'clf')
         if self.param_grid:
@@ -86,4 +89,5 @@ class ClassifierRandomSearch(Classifier):
                                      )
         else:
             clf = self.pipeline
+        clf.fit(X, y)
         self.clf = clf

@@ -68,5 +68,5 @@ if __name__ == '__main__':
                                                                                  tfidf_kws=tfidf_kws
                                                                                  )
 
-    results_for_plotting.to_excel('../results/nlp_results.xlsx', index=False)
-    runtimes_for_plotting.to_excel('../results/nlp_runtimes.xlsx', index=False)
+    results_for_plotting.to_excel('../../results/nlp_results.xlsx', index=False)
+    runtimes_for_plotting.to_excel('../../results/nlp_runtimes.xlsx', index=False)

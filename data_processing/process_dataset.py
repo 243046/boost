@@ -17,7 +17,7 @@ def prepare_dataset_for_classification(
         y_col,
         desired_categorical_columns=[],
         nrows=None,
-        data_path='../data/'
+        data_path='../../data/'
 ):
 
     path = data_path + dataset_name
@@ -40,7 +40,7 @@ def prepare_dataset_for_classification(
     return X, y
 
 
-def prepare_datasets_for_classification(datasets: dict, data_path='../data/'):
+def prepare_datasets_for_classification(datasets: dict, data_path='../../data/'):
     result = []
     for dataset_name, (y_col, desired_categorical_columns, nrows) in datasets.items():
         X, y = prepare_dataset_for_classification(dataset_name, y_col, desired_categorical_columns, nrows, data_path)
