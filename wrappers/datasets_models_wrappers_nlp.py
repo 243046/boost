@@ -1,5 +1,8 @@
+from sklearn.metrics import make_scorer
+
 from wrappers.datasets_models_wrappers import DataModelsWrapper
 from wrappers.models_wrappers_nlp import ModelsWrapperNLP, ModelsWrapperNLPRandomSearch
+from utils.metrics import metric_f1_score
 
 
 class DataModelsWrapperNLP(DataModelsWrapper):
@@ -7,27 +10,31 @@ class DataModelsWrapperNLP(DataModelsWrapper):
             self,
             param_dict,
             tuner='hyperopt',
-            scoring='accuracy',
-            tfidf_kws={'ngram_range': (1, 2), 'min_df': 3, 'max_features': 10000},
+            tuner_scoring='neg_log_loss',
+            final_scoring={'accuracy': 'accuracy', 'f1_score': make_scorer(metric_f1_score)},
+            tfidf_kws={'ngram_range': (1, 2), 'min_df': 3, 'max_features': 3000},
             svd_kws={'n_components': 100}
     ):
 
         super().__init__(param_dict=param_dict,
                          tuner=tuner,
-                         scoring=scoring
+                         tuner_scoring=tuner_scoring,
+                         final_scoring=final_scoring
                          )
 
         self.tfidf_kws = tfidf_kws
         self.svd_kws = svd_kws
 
     def _score_single_dataset(self, X, y, models):
-        model = ModelsWrapperNLP(models, tuner=self.tuner, scoring=self.scoring, tfidf_kws=self.tfidf_kws)
+        model = ModelsWrapperNLP(models, tuner=self.tuner, tuner_scoring=self.tuner_scoring,
+                                 final_scoring=self.final_scoring, tfidf_kws=self.tfidf_kws)
         model.fit(X, y)
-        return model.results_, model.runtimes_
+        return model.results_, model.tuning_times_, model.runtimes_
 
 
 class DataModelsWrapperNLPRandomSearch(DataModelsWrapperNLP):
     def _score_single_dataset(self, X, y, models):
-        model = ModelsWrapperNLPRandomSearch(models, scoring=self.scoring, tfidf_kws=self.tfidf_kws)
+        model = ModelsWrapperNLPRandomSearch(models, tuner_scoring=self.tuner_scoring,
+                                 final_scoring=self.final_scoring, tfidf_kws=self.tfidf_kws)
         model.fit(X, y)
-        return model.results_, model.runtimes_
+        return model.results_, model.tuning_times_, model.runtimes_

@@ -8,20 +8,8 @@ from ray import tune
 
 from wrappers.datasets_models_wrappers import DataModelsWrapper, DataModelsWrapperRandomSearch
 from data_processing.process_dataset import prepare_datasets_for_classification
+from experiments_runners.basic_runners import run
 warnings.filterwarnings('ignore')
-
-
-def run(param_dict, mode='TPE', tuner='hyperopt', scoring='accuracy'):
-    if mode == 'randomized':
-        model = DataModelsWrapperRandomSearch(param_dict, scoring=scoring)
-    elif mode == 'TPE':
-        model = DataModelsWrapper(param_dict, tuner=tuner, scoring=scoring)
-    model.fit()
-    all_results = model.all_datasets_results_
-    all_runtimes = model.all_datasets_runtimes_
-    results_for_plotting = model.results_for_plotting_
-    runtimes_for_plotting = model.runtimes_for_plotting_
-    return all_results, all_runtimes, results_for_plotting, runtimes_for_plotting
 
 
 if __name__ == '__main__':
@@ -67,7 +55,7 @@ if __name__ == '__main__':
     }
 
     all_results, all_runtimes, results_for_plotting, runtimes_for_plotting = run(param_dict=param_dict,
-                                                                                 mode='TPE', scoring='accuracy')
+                                                                                 mode='TPE')
 
     name = 'ordinary_TPE'
     results_for_plotting.to_excel(f'../../results/results_{name}.xlsx', index=False)

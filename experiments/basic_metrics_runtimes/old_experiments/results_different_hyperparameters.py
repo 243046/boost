@@ -1,44 +1,13 @@
 import warnings
 
-import pandas as pd
-from sklearn.ensemble import GradientBoostingClassifier
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
 
-from wrappers.datasets_models_wrappers import DataModelsWrapper, DataModelsWrapperRandomSearch
-from wrappers.datasets_models_wrappers_nlp import DataModelsWrapperNLP, DataModelsWrapperNLPRandomSearch
 from data_processing.process_dataset import prepare_datasets_for_classification
-from data_processing.process_dataset_nlp import prepare_nlp_for_classification
+from experiments_runners.basic_runners import run
 
 warnings.filterwarnings('ignore')
-
-
-def run(param_dict, mode='randomized', tuner='hyperopt', scoring='accuracy'):
-    if mode == 'randomized':
-        model = DataModelsWrapperRandomSearch(param_dict, scoring=scoring)
-    elif mode == 'TPE':
-        model = DataModelsWrapper(param_dict, tuner=tuner, scoring=scoring)
-    model.fit()
-    all_results = model.all_datasets_results_
-    all_runtimes = model.all_datasets_runtimes_
-    results_for_plotting = model.results_for_plotting_
-    runtimes_for_plotting = model.runtimes_for_plotting_
-    return all_results, all_runtimes, results_for_plotting, runtimes_for_plotting
-
-
-def run_nlp(param_dict, mode='randomized', tuner='hyperopt', scoring='accuracy',
-            tfidf_kws={'ngram_range': (1, 2), 'min_df': 3, 'max_features': 10000}):
-    if mode == 'randomized':
-        model = DataModelsWrapperNLPRandomSearch(param_dict, scoring=scoring, tfidf_kws=tfidf_kws)
-    elif mode == 'TPE':
-        model = DataModelsWrapperNLP(param_dict, tuner=tuner, scoring=scoring, tfidf_kws=tfidf_kws)
-    model.fit()
-    all_results = model.all_datasets_results_
-    all_runtimes = model.all_datasets_runtimes_
-    results_for_plotting = model.results_for_plotting_
-    runtimes_for_plotting = model.runtimes_for_plotting_
-    return all_results, all_runtimes, results_for_plotting, runtimes_for_plotting
 
 
 if __name__ == '__main__':
@@ -82,7 +51,7 @@ if __name__ == '__main__':
         'prostate': (X_5, y_5, models)
     }
 
-    _, _, results_for_plotting, runtimes_for_plotting = run(param_dict=param_dict, mode='randomized', scoring='accuracy')
+    _, _, results_for_plotting, runtimes_for_plotting = run(param_dict=param_dict, mode='randomized')
 
     name = 'hyperparameters'
     results_for_plotting.to_excel(f'../../results/results_{name}.xlsx', index=False)

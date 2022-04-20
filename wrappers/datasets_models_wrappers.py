@@ -1,43 +1,52 @@
 import pandas as pd
+from sklearn.metrics import make_scorer
 
 from wrappers.models_wrappers import ModelsWrapper, ModelsWrapperRandomSearch
+from utils.metrics import metric_f1_score
 
+class DataModelsWrapper:
+    def __init__(
+            self,
+            param_dict,
+            tuner='hyperopt',
+            tuner_scoring='neg_log_loss',
+            final_scoring={'accuracy': 'accuracy', 'f1_score': make_scorer(metric_f1_score)}
+    ):
 
-class DataModelsWrapper(ModelsWrapper):
-    def __init__(self, param_dict, tuner='hyperopt', scoring='accuracy'):
         self.param_dict = param_dict.copy()
         self.tuner = tuner
-        self.scoring = scoring
+        self.tuner_scoring = tuner_scoring
+        self.final_scoring = final_scoring
 
     def _score_single_dataset(self, X, y, models):
-        model = ModelsWrapper(models, tuner=self.tuner, scoring=self.scoring)
+        model = ModelsWrapper(models, tuner=self.tuner, tuner_scoring=self.tuner_scoring,
+                         final_scoring=self.final_scoring)
         model.fit(X, y)
-        return model.results_, model.runtimes_
+        return model.results_, model.tuning_times_, model.runtimes_
 
     @staticmethod
     def _get_mean_scores(results):
         return results.mean().to_frame().T
 
     def _fit(self):
-        all_datasets_results, all_datasets_runtimes, results_for_plotting, runtimes_for_plotting = [pd.DataFrame()]*4
-        datasets_names = list(self.param_dict.keys())
+        all_datasets_results = {scoring: pd.DataFrame() for scoring in self.final_scoring}
+        all_datasets_tuning_times, all_datasets_runtimes = pd.DataFrame(), pd.DataFrame()
 
         for dataset_name, (X, y, models) in self.param_dict.items():
-            results, runtimes = self._score_single_dataset(X, y, models)
-            mean_scores = self._get_mean_scores(results)
-
-            all_datasets_results = pd.concat([all_datasets_results, mean_scores])
-            results['dataset'] = dataset_name
-            all_datasets_runtimes = pd.concat([all_datasets_runtimes, runtimes])
+            print(dataset_name)
+            results, tuning_times, runtimes = self._score_single_dataset(X, y, models)
+            for scoring in results:
+                results[scoring]['dataset'] = dataset_name
+                all_datasets_results[scoring] = pd.concat([all_datasets_results[scoring], results[scoring]])
+            tuning_times['dataset'] = dataset_name
             runtimes['dataset'] = dataset_name
-            results_for_plotting = pd.concat([results_for_plotting, results])
-            runtimes_for_plotting = pd.concat([runtimes_for_plotting, runtimes])
+            all_datasets_tuning_times = pd.concat([all_datasets_tuning_times, tuning_times])
+            all_datasets_runtimes = pd.concat([all_datasets_runtimes, runtimes])
+            print(f'dataset {dataset_name} done\n')
 
-        all_datasets_results.index, all_datasets_runtimes.index = datasets_names, datasets_names
         self.all_datasets_results_ = all_datasets_results
+        self.all_datasets_tuning_times_ = all_datasets_tuning_times
         self.all_datasets_runtimes_ = all_datasets_runtimes
-        self.results_for_plotting_ = results_for_plotting
-        self.runtimes_for_plotting_ = runtimes_for_plotting
 
     def fit(self):
         self._fit()
@@ -45,7 +54,20 @@ class DataModelsWrapper(ModelsWrapper):
 
 
 class DataModelsWrapperRandomSearch(DataModelsWrapper):
+    def __init__(
+            self,
+            param_dict,
+            tuner_scoring='neg_log_loss',
+            final_scoring={'accuracy': 'accuracy', 'f1_score': make_scorer(metric_f1_score)}
+    ):
+
+        super().__init__(param_dict=param_dict,
+                         tuner=None,
+                         tuner_scoring=tuner_scoring,
+                         final_scoring=final_scoring
+                         )
+
     def _score_single_dataset(self, X, y, models):
-        model = ModelsWrapperRandomSearch(models, scoring=self.scoring)
+        model = ModelsWrapperRandomSearch(models, tuner_scoring=self.tuner_scoring, final_scoring=self.final_scoring)
         model.fit(X, y)
-        return model.results_, model.runtimes_
+        return model.results_, model.tuning_times_, model.runtimes_
