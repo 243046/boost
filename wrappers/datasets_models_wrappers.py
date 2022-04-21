@@ -38,10 +38,13 @@ class DataModelsWrapper:
             for scoring in results:
                 results[scoring]['dataset'] = dataset_name
                 all_datasets_results[scoring] = pd.concat([all_datasets_results[scoring], results[scoring]])
+                all_datasets_results[scoring].to_excel(f'results_{scoring}.xlsx', index=False)
             tuning_times['dataset'] = dataset_name
             runtimes['dataset'] = dataset_name
             all_datasets_tuning_times = pd.concat([all_datasets_tuning_times, tuning_times])
             all_datasets_runtimes = pd.concat([all_datasets_runtimes, runtimes])
+            all_datasets_tuning_times.to_excel(f'tuning_times.xlsx', index=False)
+            all_datasets_runtimes.to_excel(f'runtimes.xlsx', index=False)
             print(f'dataset {dataset_name} done\n')
 
         self.all_datasets_results_ = all_datasets_results
