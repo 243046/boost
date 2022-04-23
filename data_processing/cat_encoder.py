@@ -1,5 +1,6 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 import numpy as np
+import pandas as pd
 from category_encoders.cat_boost import CatBoostEncoder
 
 
@@ -10,7 +11,10 @@ class PermutedCatBoostEncoder(BaseEstimator, TransformerMixin):
     def _permute(self, X, y, seed=123):
         np.random.seed(seed)
         perm = np.random.permutation(len(X))
-        X, y = X.iloc[perm, :].reset_index(drop=True), y[perm].reset_index(drop=True)
+        y = y[perm]
+        X = X.iloc[perm, :].reset_index(drop=True)
+        if isinstance(y, pd.Series):
+            y = y.reset_index(drop=True)
         return X, y
 
     def fit(self, X, y):
@@ -19,7 +23,6 @@ class PermutedCatBoostEncoder(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
-        print(self.encoder_.transform(X))
         return self.encoder_.transform(X)
 
 

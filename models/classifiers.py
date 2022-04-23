@@ -6,6 +6,7 @@ from sklearn.pipeline import Pipeline
 from category_encoders.cat_boost import CatBoostEncoder
 from tune_sklearn import TuneSearchCV
 
+from data_processing.cat_encoder import PermutedCatBoostEncoder
 from utils.metrics import metric_f1_score
 
 
@@ -27,7 +28,7 @@ class Classifier:
 
     def _make_pipeline(self):
         self.pipeline = Pipeline([
-            ('encoder', CatBoostEncoder()),
+            ('encoder', PermutedCatBoostEncoder()),
             ('clf', self.model)
         ])
 
