@@ -11,11 +11,14 @@ sns.set_style('whitegrid')
 def visualize_runtimes_on_barplots(
         results_path='../results/all_runtimes.xlsx',
         out_path='../plots/runtimes_barplots.pdf',
+        df=None,
         figsize=(7, 12),
         save=False,
         **kwargs
 ):
-    df = pd.read_excel(results_path)
+
+    if df is None:
+        df = pd.read_excel(results_path)
     melted = df.melt(id_vars='dataset', var_name='model', value_name='runtime')
     fig, ax = plt.subplots(figsize=figsize)
     sns.barplot(data=melted, x='runtime', y='dataset', hue='model', ax=ax, **kwargs)
