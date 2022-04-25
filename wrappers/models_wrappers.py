@@ -1,7 +1,7 @@
 from time import time
 
 import pandas as pd
-from sklearn.metrics import make_scorer
+from sklearn.metrics import make_scorer, roc_auc_score
 
 from models.classifiers import Classifier, ClassifierRandomSearch
 from utils.metrics import metric_f1_score
@@ -13,7 +13,9 @@ class ModelsWrapper:
             models,
             tuner='hyperopt',
             tuner_scoring='neg_log_loss',
-            final_scoring={'accuracy': 'accuracy', 'f1_score': make_scorer(metric_f1_score)}
+            final_scoring={'accuracy': 'accuracy',
+                           'f1_score': make_scorer(metric_f1_score),
+                           'AUC': make_scorer(roc_auc_score, needs_proba=True, multi_class='ovr', average='weighted')}
     ):
 
         self.models = models.copy()

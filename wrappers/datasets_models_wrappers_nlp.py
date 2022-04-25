@@ -1,4 +1,4 @@
-from sklearn.metrics import make_scorer
+from sklearn.metrics import make_scorer, roc_auc_score
 
 from wrappers.datasets_models_wrappers import DataModelsWrapper
 from wrappers.models_wrappers_nlp import ModelsWrapperNLP, ModelsWrapperNLPRandomSearch
@@ -11,7 +11,9 @@ class DataModelsWrapperNLP(DataModelsWrapper):
             param_dict,
             tuner='hyperopt',
             tuner_scoring='neg_log_loss',
-            final_scoring={'accuracy': 'accuracy', 'f1_score': make_scorer(metric_f1_score)},
+            final_scoring={'accuracy': 'accuracy',
+                           'f1_score': make_scorer(metric_f1_score),
+                           'AUC': make_scorer(roc_auc_score, needs_proba=True, multi_class='ovr', average='weighted')},
             tfidf_kws={'ngram_range': (1, 2), 'min_df': 3, 'max_features': 3000},
             svd_kws={'n_components': 100}
     ):

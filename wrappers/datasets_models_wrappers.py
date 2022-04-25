@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.metrics import make_scorer
+from sklearn.metrics import make_scorer, roc_auc_score
 
 from wrappers.models_wrappers import ModelsWrapper, ModelsWrapperRandomSearch
 from utils.metrics import metric_f1_score
@@ -10,7 +10,9 @@ class DataModelsWrapper:
             param_dict,
             tuner='hyperopt',
             tuner_scoring='neg_log_loss',
-            final_scoring={'accuracy': 'accuracy', 'f1_score': make_scorer(metric_f1_score)}
+            final_scoring={'accuracy': 'accuracy',
+                           'f1_score': make_scorer(metric_f1_score),
+                           'AUC': make_scorer(roc_auc_score, needs_proba=True, multi_class='ovr', average='weighted')},
     ):
 
         self.param_dict = param_dict.copy()
@@ -61,7 +63,9 @@ class DataModelsWrapperRandomSearch(DataModelsWrapper):
             self,
             param_dict,
             tuner_scoring='neg_log_loss',
-            final_scoring={'accuracy': 'accuracy', 'f1_score': make_scorer(metric_f1_score)}
+            final_scoring={'accuracy': 'accuracy',
+                           'f1_score': make_scorer(metric_f1_score),
+                           'AUC': make_scorer(roc_auc_score, needs_proba=True, multi_class='ovr', average='weighted')},
     ):
 
         super().__init__(param_dict=param_dict,

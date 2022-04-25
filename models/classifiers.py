@@ -1,9 +1,8 @@
 from time import time
 from sklearn.model_selection import RandomizedSearchCV
-from sklearn.model_selection import StratifiedKFold, cross_val_score, cross_validate
-from sklearn.metrics import make_scorer
+from sklearn.model_selection import StratifiedKFold, cross_validate
+from sklearn.metrics import make_scorer, roc_auc_score
 from sklearn.pipeline import Pipeline
-from category_encoders.cat_boost import CatBoostEncoder
 from tune_sklearn import TuneSearchCV
 
 from data_processing.cat_encoder import PermutedCatBoostEncoder
@@ -17,7 +16,9 @@ class Classifier:
             param_grid,
             tuner='hyperopt',
             tuner_scoring='neg_log_loss',
-            final_scoring={'accuracy': 'accuracy', 'f1_score': make_scorer(metric_f1_score)}
+            final_scoring={'accuracy': 'accuracy',
+                           'f1_score': make_scorer(metric_f1_score),
+                           'AUC': make_scorer(roc_auc_score, needs_proba=True, multi_class='ovr', average='weighted')}
     ):
 
         self.model = model
@@ -84,7 +85,9 @@ class ClassifierRandomSearch(Classifier):
             model,
             param_grid,
             tuner_scoring='neg_log_loss',
-            final_scoring={'accuracy': 'accuracy', 'f1_score': make_scorer(metric_f1_score)}
+            final_scoring={'accuracy': 'accuracy',
+                           'f1_score': make_scorer(metric_f1_score),
+                           'AUC': make_scorer(roc_auc_score, needs_proba=True, multi_class='ovr', average='weighted')}
     ):
 
         super().__init__(model,
