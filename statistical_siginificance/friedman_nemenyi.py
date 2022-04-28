@@ -28,12 +28,6 @@ class FriedmanNemenyi:
     @staticmethod
     def _generate_scores(method, method_args, data, labels):
         pairwise_scores = method(data, **method_args)
-        # pairwise_scores = pd.DataFrame([
-        #     [1, 0.0001, 0.01, 0.5],
-        #     [0.0001, 1, 0.2, 0.002],
-        #     [0.01, 0.2, 1, 0.1],
-        #     [0.5, 0.002, 0.1, 1]
-        # ])
         pairwise_scores.set_axis(labels, axis='columns', inplace=True)
         pairwise_scores.set_axis(labels, axis='rows', inplace=True)
         return pairwise_scores
@@ -51,7 +45,8 @@ class FriedmanNemenyi:
             'linecolor': '0.5',
             'square': True,
             'cbar_ax_bbox': [0.80, 0.35, 0.04, 0.3],
-            'ranks': ranks
+            'ranks': ranks,
+            'annot_fontsize': 6
         }
         sp.sign_plot(scores, **heatmap_args)
         if self.save:
@@ -92,24 +87,3 @@ class FriedmanNemenyi:
         nemenyi_scores = self._test_nemenyi(reject)
         heatmap_ranks = self._prepare_ranks_for_heatmap(ranks)
         self._plot_heatmap(nemenyi_scores, heatmap_ranks)
-
-
-if __name__ == '__main__':
-    combinations = [
-        # ('no_tuning_100_25_trees', '12_datasets_no_tuning_100_25_trees', 'accuracy'),
-        # ('no_tuning_100_25_trees', '12_datasets_no_tuning_100_25_trees', 'f1_score'),
-        ('no_tuning_150_50_trees', '12_datasets_no_tuning_150_50_trees', 'accuracy'),
-        ('no_tuning_150_50_trees', '12_datasets_no_tuning_150_50_trees', 'f1_score'),
-        ('no_tuning_150_50_trees', '12_datasets_no_tuning_150_50_trees', 'AUC'),
-        # ('TPE_tuning_100_25_trees', '12_datasets_TPE_100_25_trees', 'accuracy'),
-        # ('TPE_tuning_100_25_trees', '12_datasets_TPE_100_25_trees', 'f1_score'),
-        ('TPE_tuning_150_50_trees', '12_datasets_TPE_150_50_trees', 'accuracy'),
-        ('TPE_tuning_150_50_trees', '12_datasets_TPE_150_50_trees', 'f1_score'),
-        ('TPE_tuning_150_50_trees', '12_datasets_TPE_150_50_trees', 'AUC')
-    ]
-    for exp, name, scoring in combinations:
-        print(exp, name, scoring)
-        data_path = f'../results/basic_metrics_runtimes/{exp}/results_{scoring}_{name}.xlsx'
-        out_path = f'../plots/statistical_significance/{exp}/heatmap_{scoring}_{name}.pdf'
-        c = FriedmanNemenyi(data_path, out_path, save=False)
-        c.perform_analysis()

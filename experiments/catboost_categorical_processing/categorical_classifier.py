@@ -34,30 +34,31 @@ class CatBoostExperiment:
         runtimes = pd.DataFrame()
         self._make_cv()
         if self.models is None:
-            catboost_catboost_encoder = Pipeline([
-                ('encoder', CatBoostEncoder()),
-                ('CatBoost', CatBoostClassifier(n_estimators=100, verbose=False, random_state=321))
-            ])
-            catboost_permuted_catboost_encoder = Pipeline([
+            different_permutations = Pipeline([
                 ('encoder', PermutedCatBoostEncoder()),
-                ('CatBoost', CatBoostClassifier(n_estimators=100, verbose=False, random_state=321))
+                ('CatBoost', CatBoostClassifier(boosting_type='Ordered', n_estimators=100,
+                                                verbose=False, random_state=321))
             ])
-            catboost_embedded = CatBoostClassifier(n_estimators=100, verbose=False, random_state=123)
-            catboost_ohe = Pipeline([
-                ('encoder', OneHotEncoder()),  # sparse=False
-                ('CatBoost', CatBoostClassifier(n_estimators=100, verbose=False, random_state=321))
+            identical_permutations_ord = CatBoostClassifier(boosting_type='Ordered', n_estimators=100,
+                                                            verbose=False, random_state=123)
+            embedded_plain = CatBoostClassifier(boosting_type='Plain', n_estimators=100,
+                                                              verbose=False, random_state=123)
+            ohe = Pipeline([
+                ('encoder', OneHotEncoder(handle_unknown='ignore')),
+                ('CatBoost', CatBoostClassifier(boosting_type='Ordered', n_estimators=100,
+                                                verbose=False, random_state=321))
             ])
             self.models = {
-                'CatBoost perm preprocessed': catboost_permuted_catboost_encoder,
-                'CatBoost preprocessed': catboost_catboost_encoder,
-                'CatBoost embedded': catboost_embedded,
-                'CatBoost OHE': catboost_ohe
+                'different\nperm.': different_permutations,
+                'embedded\nidentical perm.': identical_permutations_ord,
+                'embedded\nPlain': embedded_plain,
+                'OHE': ohe
             }
         for model_name, model in self.models.items():
             print(model_name)
             cat_features = [X.columns.get_loc(col) for col in X]
             t0 = time()
-            if model_name == 'CatBoost embedded':
+            if model_name in ['embedded\nidentical perm.', 'embedded\nPlain']:
                 cv_results = cross_validate(model, X, y, scoring=self.final_scoring, cv=self.outer_cv, n_jobs=-1,
                                             fit_params={'cat_features': cat_features})
             else:
