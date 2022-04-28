@@ -38,6 +38,7 @@ def perform_analysis_on_combined(scorings=('accuracy', 'AUC', 'f1_score'), varia
     for scoring in scorings:
         path = fr'../results/basic_metrics_runtimes/tuning_no_tuning_combined/results_{scoring}_12_datasets_{variant}.xlsx'
         out_path = fr'../plots/statistical_significance/tuning_no_tuning_combined/heatmap_{scoring}_{variant}.pdf'
+        print(scoring)
         c = FriedmanNemenyi(path, out_path, save=save)
         c.perform_analysis()
 
