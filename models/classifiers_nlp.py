@@ -1,5 +1,4 @@
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.decomposition import TruncatedSVD
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import make_scorer, roc_auc_score
 from sklearn.pipeline import Pipeline
@@ -34,7 +33,6 @@ class ClassifierNLP(Classifier):
     def _make_pipeline(self):
         self.pipeline = Pipeline([
             ('tf-idf', TfidfVectorizer(**self.tfidf_kws)),
-          #  ('svd', TruncatedSVD(**self.svd_kws)),
             ('clf', self.model)
         ])
 
@@ -61,6 +59,7 @@ class ClassifierNLPRandomSearch(ClassifierNLP):
         if self.param_grid:
             clf = RandomizedSearchCV(self.pipeline,
                                      param_distributions=grid,
+                                     n_iter=15,
                                      scoring=self.tuner_scoring,
                                      cv=self.inner_cv,
                                      n_jobs=-1,
