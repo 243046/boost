@@ -59,7 +59,7 @@ class ClassifierNLPRandomSearch(ClassifierNLP):
         if self.param_grid:
             clf = RandomizedSearchCV(self.pipeline,
                                      param_distributions=grid,
-                                     n_iter=15,
+                                     n_iter=30,
                                      scoring=self.tuner_scoring,
                                      cv=self.inner_cv,
                                      n_jobs=-1,
