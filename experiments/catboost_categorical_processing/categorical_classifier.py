@@ -16,8 +16,8 @@ class CatBoostExperiment:
             self,
             models=None,
             final_scoring={'accuracy': 'accuracy',
-                           'f1_score': make_scorer(metric_f1_score),
-                           'AUC': make_scorer(roc_auc_score, needs_proba=True, multi_class='ovr', average='weighted')},
+                           'AUC': make_scorer(roc_auc_score, needs_proba=True, multi_class='ovr', average='weighted'),
+                           'log loss': 'neg_log_loss'},
             dataset_name='mushrooms'
     ):
 

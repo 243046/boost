@@ -36,16 +36,17 @@ class Regularization:
 
 if __name__ == '__main__':
     model = XGBClassifier(tree_method='hist', use_label_encoder=False, eval_metric='logloss', random_state=123)
-    min_val, max_val = 0, 5
+    min_val, max_val = 0, 10
     step = 0.5
     param_grid = {
         'alpha': np.arange(min_val, max_val + step, step),
         'lambda': np.arange(min_val, max_val + step, step),
         'gamma': np.arange(min_val, max_val + step, step)
     }
-    name = 'gina_agnostic'  # 'prostate'
-    X, y = prepare_datasets_for_classification({'gina_agnostic.csv': ('target', None, 100)})
+    name = 'leukemia'  # 'prostate'
+    #X, y = prepare_datasets_for_classification({'gina_agnostic.csv': ('target', None, 100)})
+    X, y = prepare_datasets_for_classification({'leukemia.csv': ('target', [], None)})
     model = Regularization(model, param_grid)
     model.fit(X, y)
     search_results = model.get_search_results()
-    search_results.to_excel(f'regularization_results_05_step_{name}.xlsx', index=False)
+    search_results.to_excel(f'regularization_results_05_step_max_val_{max_val}_{name}.xlsx', index=False)

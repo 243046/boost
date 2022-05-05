@@ -25,6 +25,11 @@ if __name__ == '__main__':
 
     X_1, y_1, X_2, y_2 = prepare_datasets_for_classification(d, data_path='../../data/')
 
+    x_1 = OneHotEncoder(sparse=False).fit_transform(X_1)
+    x_2 = OneHotEncoder(sparse=False).fit_transform(X_2)
+    print('mushrooms shape: ', x_1.shape)
+    print('amazon shape: ', x_2.shape)
+
     results_1, runtimes_1 = run_categorical(X_1, y_1, 'mushrooms')
     results_2, runtimes_2 = run_categorical(X_2, y_2, 'amazon')
     results = pd.DataFrame()
@@ -42,18 +47,18 @@ if __name__ == '__main__':
         df['metric'] = scoring
         results = pd.concat([results, df])
 
-    results['metric'] = results['metric'].str.replace('_', ' ')
+    results['metric'] = results['metric'].str.replace('f1_', 'F1 ')
     results.to_excel(r'../../results/catboost_categorical_processing/results_all_metrics.xlsx', index=False)
     runtimes = pd.concat([runtimes_1, runtimes_2])
     runtimes.to_excel(r'../../results/catboost_categorical_processing/runtimes.xlsx', index=False)
-    visualize_runtimes_on_barplots(df=runtimes,
-                                   palette='cool',
-                                   out_path=fr'../../plots/catboost_categorical_processing/runtimes.pdf',
-                                   save=True
-                                   )
-    visualize_row_col_facet(df=results,
-                            palette='cool',
-                            out_path=fr'../../plots/catboost_categorical_processing/results_all_metrics.pdf',
-                            sharey=False,
-                            save=True
-                            )
+    # visualize_runtimes_on_barplots(df=runtimes,
+    #                                palette='cool',
+    #                                out_path=fr'../../plots/catboost_categorical_processing/runtimes.pdf',
+    #                                save=True
+    #                                )
+    # visualize_row_col_facet(df=results,
+    #                         palette='cool',
+    #                         out_path=fr'../../plots/catboost_categorical_processing/results_all_metrics.pdf',
+    #                         sharey=False,
+    #                         save=True
+    #                         )

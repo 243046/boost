@@ -25,7 +25,7 @@ def visualize_runtimes_on_barplots(
     ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f'{int(x)}s'))
     for c in ax.containers:
         labels = [f'{v.get_width():.2f}s' for v in c]
-        ax.bar_label(c, labels=labels, label_type='edge', fontsize=10)
+        ax.bar_label(c, labels=labels, label_type='edge', fontsize=12)
     if save:
         fig.savefig(out_path, bbox_inches='tight')
 

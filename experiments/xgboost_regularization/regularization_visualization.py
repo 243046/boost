@@ -72,6 +72,6 @@ def visualize_regularization(df, out_path='regularization_05_step.pdf'):
 
 
 if __name__ == '__main__':
-    name = 'gina_agnostic'
-    df = pd.read_excel(f'regularization_results_05_step_{name}.xlsx')
-    visualize_regularization(df, out_path=f'regularization_05_step_{name}.pdf')
+    name = 'leukemia'
+    df = pd.read_excel(f'regularization_results_05_step_max_val_10_{name}.xlsx')
+    visualize_regularization(df, out_path=f'regularization_05_step_max_val_10_{name}.pdf')

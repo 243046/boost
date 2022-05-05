@@ -36,6 +36,7 @@ class FriedmanNemenyi:
             self,
             scores,
             ranks,
+            fontsize=10
     ):
 
         plt.figure()
@@ -46,7 +47,7 @@ class FriedmanNemenyi:
             'square': True,
             'cbar_ax_bbox': [0.80, 0.35, 0.04, 0.3],
             'ranks': ranks,
-            'annot_fontsize': 6
+            'annot_fontsize': fontsize
         }
         sp.sign_plot(scores, **heatmap_args)
         if self.save:
@@ -66,10 +67,10 @@ class FriedmanNemenyi:
         # print(f'Should we reject H0 at the {(1 - self.alpha) * 100}% confidence level? {reject}, {p = }')
         return reject
 
-    def _get_friedman_ranks(self):
+    def _get_friedman_ranks(self):  # note: higher rank = better
         _, _, ranking, _ = stac.friedman_test(*self.data.T)
         ranks = dict(zip(self.models, ranking))
-        print({k: round(v, 3) for k, v in sorted(ranks.items(), key=lambda x: x[1])}, '\n')
+        print({k: round(v, 2) for k, v in sorted(ranks.items(), key=lambda x: x[1])[::-1]}, '\n')
         return ranks
 
     def _test_nemenyi(self, reject):
@@ -80,10 +81,10 @@ class FriedmanNemenyi:
         nemenyi_scores = self._generate_scores(sp.posthoc_nemenyi_friedman, {}, self.data, self.models)
         return nemenyi_scores
 
-    def perform_analysis(self):
+    def perform_analysis(self, fontsize=10):
         self._load_data()
         reject = self._test_friedman()
         ranks = self._get_friedman_ranks()
         nemenyi_scores = self._test_nemenyi(reject)
         heatmap_ranks = self._prepare_ranks_for_heatmap(ranks)
-        self._plot_heatmap(nemenyi_scores, heatmap_ranks)
+        self._plot_heatmap(nemenyi_scores, heatmap_ranks, fontsize=fontsize)

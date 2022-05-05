@@ -72,6 +72,19 @@ def friedman_test(*args):
         M. Friedman, The use of ranks to avoid the assumption of normality implicit in the analysis of variance, Journal of the American Statistical Association 32 (1937) 674–701.
         D.J. Sheskin, Handbook of parametric and nonparametric statistical procedures. crc Press, 2003, Test 25: The Friedman Two-Way Analysis of Variance by Ranks
     """
+    q_005 = {
+        2: 1.96,
+        3: 2.343,
+        4: 2.569,
+        5: 2.728,
+        6: 2.85,
+        7: 2.949,
+        8: 3.031,
+        9: 3.102,
+        10: 3.164,
+        11: 3.219,
+        12: 3.268
+    }
     k = len(args)
     if k < 2: raise ValueError('Less than 2 levels')
     n = len(args[0])
@@ -90,6 +103,9 @@ def friedman_test(*args):
                 (sp.sum(r ** 2 for r in rankings_avg)) - ((k * (k + 1) ** 2) / float(4)))
     iman_davenport = ((n - 1) * chi2) / float((n * (k - 1) - chi2))
 
+    if k <= 12:
+        cd = q_005[k] * sp.sqrt(k * (k + 1) / (6. * n))
+        print(f'Critical Difference CD = {cd:.3f}')
     p_value = 1 - st.f.cdf(iman_davenport, k - 1, (k - 1) * (n - 1))
 
     return iman_davenport, p_value, rankings_avg, rankings_cmp
