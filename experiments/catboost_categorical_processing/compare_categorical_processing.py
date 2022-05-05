@@ -42,7 +42,7 @@ if __name__ == '__main__':
         df['metric'] = scoring
         results = pd.concat([results, df])
 
-    results['metric'] = results['metric'].str.replace('_', ' ')
+    results['metric'] = results['metric'].str.replace('f1_', 'F1 ')
     results.to_excel(r'../../results/catboost_categorical_processing/results_all_metrics.xlsx', index=False)
     runtimes = pd.concat([runtimes_1, runtimes_2])
     runtimes.to_excel(r'../../results/catboost_categorical_processing/runtimes.xlsx', index=False)
