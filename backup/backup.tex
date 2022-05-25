@@ -122,6 +122,7 @@
 \usepackage{verbatim}
 \usepackage{bm}
 \usepackage{cases}
+\usepackage{amssymb}
 %\usepackage[font=small,aboveskip=0pt,skip=1pt]{caption}
 %\usepackage[font=small,aboveskip=12pt,skip=12pt]{caption} % zalec
 %\usepackage[font=small]{caption} % 10pt domyślnie
@@ -133,6 +134,8 @@
 \usepackage{longtable}
 \usepackage{rotating,booktabs}
 \usepackage{rotating}
+\usepackage[ruled,linesnumbered]{algorithm2e}
+\usepackage{bbm}
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  
 
@@ -149,7 +152,9 @@
 \def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
 \hypersetup{pdfauthor={Name}}
 \DeclareMathOperator{\E}{\mathbb{E}}
-\renewcommand{\Pr}{\qopname \relax m{P}}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\renewcommand{\Pr}{\qopname \relax m{Pr}}
 \raggedbottom 
 \makesavenoteenv{tabular}
 \makesavenoteenv{table}
@@ -189,7 +194,7 @@ A thorough comparison of XGBoost and LightGBM has been performed. The datasets w
 While XGBoost \cite{xgboost} and LightGBM \cite{lightgbm} implementations were focused more on the computational aspect of gradient boosting, authors of CatBoost \cite{catboost} have put a big emphasis eliminating so called "the prediction shift". They claimed that it had never been addressed or formally defined before in any GBM implementation, however, it may have a significant impact on the model's performance. Authors show theoretical explanation the prediction shift phenomena and thus present an Ordered Boosting algorithm which tackles the aforementioned problem by using a permutation based approach. Ordered Boosting has been compared to a non-ordered variant (called Plain boosting) and it has been concluded that addressing the prediction shift yields slightly better results. 
 
 Categorical variables preprocessing is another aspect of CatBoost which has been discussed very thoroughly by the authors. It is claimed that the prediction shift also occurs in case of the aforementioned preprocessing; a novel method of handling categorical variables has been presented. Additionally, a comparison of CatBoost, XGBoost and LightGBM has been shown in \cite{catboost} --- both baseline and tuned models using hyperparameter search have been considered. It has been concluded that across all datasets, CatBoost yielded the most prominent results; the values of both analyzed loss functions was the lowest, although XGBoost and LightGBM performed only slightly worse. What is really interesting is that a baseline Plain version of CatBoost (the one which is very similar to the original gradient boosting implementation introduced in \cite{friedman_gbm}) without having its hyperparameters tuned was better than tuned versions of XGBoost and LightGBM.
-The authors also gave detailed description of their experiments. In the comparative analysis of  CatBoost, XGBoost and LightGBM hyperparameter tuning has been performed using bayesian optimization with Tree Parzen Estimators \cite{tpe}. Also, the idea of bayesian search will be taken into consideration in Section \ref{chapter:results}.  % referencja do sekcji z wyn
+The authors also gave detailed description of their experiments. In the comparative analysis of  CatBoost, XGBoost and LightGBM hyperparameter tuning has been performed using Bayesian optimization with Tree Parzen Estimators \cite{tpe}. Also, the idea of Bayesian search will be taken into consideration in Section \ref{chapter:results}.  % referencja do sekcji z wyn
 
 However, the comparisons of algorithms presented in \cite{lightgbm} and \cite{catboost} might not necessarily be objective. The authors of LightGBM or CatBoost may have chosen such combination of the analyzed datasets and models' hyperparameters subjectively --- it is reasonable to think that they wanted to prove the superiority of their GBM implementations. Therefore, it is crucial to take into the consideration analyses made by impartial researches who are not creators of any of the algorithms. In \cite{competitive_analysis} four algorithms have been compared: XGBoost, LightGBM, CatBoost and SnapBoost. SnapBoost is another state-of-the-art implementation of gradient boosting machines, however, it does not seem to be publicly available. Similarly to the analysis done in \cite{catboost}, both baseline and tuned (using Tree Parzen Estimators) models have been compared. A numerical, categorical, temporal and image datasets have been used. Authors have provided the reader with all search spaces that have been used --- in most cases, basic hyperparameters such as \emph{max\_depth}, \emph{n\_estimators}, \emph{learning\_rate} or regularization ones have been tuned. It has been concluded that XGBoost and SnapBoost were the most consistent in terms of accuracy and fitting time across all four datasets. Also, CatBoost was the most accurate in the case of two datasets, although it was the slowest across three. Additionally, it performed the best on the categorical dataset. LightGBM and SnapBoost needed the least amount of time to be trained. Also, it is said that hyperparameter tuning improved models' performance significantly. Overall, the conclusions indicate that of out of three algorithms: XGBoost, LightGBM and CatBoost one cannot choose the best method which is the fastest and most accurate in all cases.
 
@@ -205,14 +210,430 @@ In \cite{comparison_of} three GBM implementations: XGBoost, LightGBM and CatBoos
 
 In summary, comparative analyses of gradient boosting algorithms presented in \cite{lightgbm}, \cite{catboost}, \cite{comparative_analysis}, \cite{competitive_analysis} and \cite{comparison_of} lead to a similar conclusion --- a thorough investigation has to be carried out. 
 
+\chapter{Theoretical background}
+In this chapter, the theoretical background of gradient boosting algorithms: \gbm will be presented. Aforementioned models are highly complex, thus a proper understanding of their theoretical foundations is crucial. Additionally, other concepts, such as classification, decision trees or evaluation metrics will be explained.
+
+\section{Preliminaries}
+\subsection{Supervised learning and classification}
+The goal of supervised learning is to predict the value of some outputs (\emph{responses}) using a set of input measured variables (\emph{predictors}) \cite{esl}. Usually, depending on the type of task which is being solved an appropriate loss function is chosen and then minimized. Regression and classification tasks are two most common supervised learning tasks which are solved in applications.
+
+The type of the response varies in case of different problems and datasets. In case of regression, it is assumed that the response is quantitative (e.g. a price of a house), while qualitative (categorical) outputs are associated with classification tasks (e.g. type of an animal on the picture) \cite{esl}. In this work, classification tasks with nominal categorical responses will be considered --- ordinal classification is out of the scope of this work.
+
+A learning set is used to train the model in supervised learning. A set
+\begin{equation}
+    \mathcal{L}_N = \left\{(\mathbf{X}_i, Y_i)\right\}_{i=1}^N
+\end{equation}
+is called a learning (training) set, where 
+\begin{equation}
+    \mathbf{X}_i = (X_{i1}, X_{i2}, \ldots, X_{ip})^T \in \mathcal{X}\subset \R^p
+\end{equation}
+and 
+\begin{equation}
+    Y_i\in \mathcal{G}.
+\end{equation}
+In other words, the learning set consists of $N$ $p$-dimensional feature vectors and one-dimensional response \cite{uczenie}. Given a set of classes $\mathcal{G}$ (unique class labels) which are considered. The realizations or observed values of $\mathbf{X}_i$ and $Y_i$ will be denoted as $\mathbf{x}_i$ and $y_i$, respectively.
+
+The goal of classification is to construct a classifier (classification or discrimination rule) $G(\mathbf{x})$ 
+\begin{equation}
+    G\colon \mathcal{X}\to \mathcal{Y}
+\end{equation}
+which for a given $\mathbf{x}\in\mathcal{X}$ will assign a class label from set $\mathcal{G}$ \cite{uczenie}.
+
+\subsection{Classification evaluation metrics}\label{section:metrics}
+Classification tasks can be evaluated by different metrics. A proper choice of a scoring function is crucial, because some may be biased towards some data characteristics, such as class labels distributions or number of classes. 
+
+Three evaluation metrics will be used to evaluate the performance of GBM implementations: accuracy, F1 score and AUC score. They measure different qualities of a classifier, thus, a model evaluation which uses all three metrics will be performed. Usually, performance of classifiers is judged by accuracy score given by \cite{sklearn}
+\begin{equation}
+    \mathrm{accuracy}(y, \hat{y}) = \frac 1N \sum_{i=1}^N \mathbbm{1}(y_i = \hat{y}_i),
+\end{equation}
+where $N$ is the number of samples, $y_i$ is the ground truth label and $\hat{y}_i$ is the prediction. Accuracy measures the fraction of correct predictions --- it can also be computed as a trace of confusion matrix divided by the sum of all its elements. Accuracy is sensitive to class distribution --- it may not be appropriate when the classes are not balanced; in such cases, accuracy may lead to overly optimistic results.
+
+Precision, recall and F-beta scores are closely related. In binary classification case, recall (or sensitivity) measures the model's ability to detect all positive samples, while precision indicates classifier's capability not to label positive samples as negatives \cite{sklearn}. Precision score is given by \cite{sklearn}
+\begin{equation}
+    \mathrm{precision} = \frac{TP}{TP+FP},
+\end{equation}
+while recall can be expressed by
+\begin{equation}
+    \mathrm{recall} = \frac{TP}{TP+FN},
+\end{equation}
+where $TP$, $FP$ and $FN$ are True Positive, False Positive and False Negative values, respectively. Precision and recall are often used simultaneously and can be combined into F-beta score which can be expressed as \cite{sklearn}
+\begin{equation}\label{eq:beta}
+F_{\beta} = (1+\beta^2)\frac{\mathrm{precision}\cdot \mathrm{recall}}{\beta^2\cdot \mathrm{precision} + \mathrm{recall}}.
+\end{equation}
+In applications,  F-beta score with $\beta = 1$ is used commonly; F1 score can be expressed as the harmonic mean of precision and recall given by
+\begin{equation}\label{eq:F1}
+    F1 = \frac{2}{\mathrm{precision}^{-1} + \mathrm{recall}^{-1}} = 2\cdot \frac{\mathrm{precision}\cdot \mathrm{recall}}{\mathrm{precision} + \mathrm{recall}}.
+\end{equation}
+F1 score can be a better metric than accuracy in case of highly imbalanced datasets. However, both metrics are dependent on the value of the cut-off point (0.5 by default) which may be counterproductive in different applications (such as medical testing, where the cut-off point for positive class is might be lower). Thus, in order to gather complete information about classifier's performance, it is reasonable to consider a metric which is independent from the choice of the cut-off point. 
+
+If a model outputs prediction scores, then ROC AUC score --- Area Under the Receiver Operating Characteristic Curve can be used. It calculates the area under the recall vs 1-specificity curve. AUC informs about the probability that the model will assign higher score for randomly chosen positive sample rathen than a randomly chosen negative one. AUC score complements accuracy and F1 score, because it measures a different predictive quality of the model. Values of all three aforementioned metrics are always in the $[0,1]$ interval.
+
+\subsection{Hyperparameter tuning}
+Hyperparameter tuning is an essential part of model selection. Often the process of choosing the best hyperparameters is manually done by trial and error, thus it can require a lot of time to complete. Procedures such as grid search, randomized search or Bayesian optimization have been designed to automate the process of model selection. In this work, two tuning frameworks will be considered: randomized search and Bayesian optimization.
+\subsubsection{Randomized search}
+Manual tuning and grid search are two most commonly used methods for hyperparameter tuning \cite{randomized}, however, both procedures require a lot of time to complete, which may not be computationally feasible. Grid search takes a grid of hyperparameters as input, where each parameter has several values to choose from. Then, the procedure searches for the best model by greedily fitting models for each possible combinations of hyperparameters (i.e. if there are 10 hyperparameters, where each of them contains 5 values to test, $5^10$ models in total have to be fitted and evaluated). Usually, cross validation is used with hyperparameter search, the number of possible models to test increases even more.
+
+Grid search is effective in low dimensional search spaces \cite{randomized}, however, it is not effective when the number of considered hyperparameters is high (e.g. in case of gradient boosting algorithms), because the size of the search space and thus the number of trials (or iterations) increases exponentially. Randomized search is an alternative to the greedy grid search procedure; it fixes the number of iterations to a value given by the user and then constructs a random search space. Instead of predetermined values, which are defined for each hyperparameter (although they can also be inputed into randomized search), hyperparameter distributions (such as uniform \U or log-uniform \logU) are given as input. To display how a search space in randomized search is constructed, an exemplary input to the algorithm in the context of gradient boosting has been proposed:
+\begin{itemize}
+    \item\emph{max\_depth}: [2, 3, 5]
+    \item\emph{n\_estimators}: [50, 100, 150, 200]
+    \item\emph{learning\_rate}: $\mathcal{U}(0.01, 0.5)$
+    \item\emph{subsample}: $\log\mathcal{U}(0.5, 1)$
+\end{itemize}
+In each tuning trial the algorithm samples the values of hyperparameters and fits a corresponding model using cross validation procedure. After the last iteration is completed, the model which performs the best in terms of cross validation score (different metrics, such as accuracy or AUC can be used) is chosen as the best one. It is worth noting that trials are independent of each other and thus the tuning process can be parallelized. 
+Empirically, it has been proven that compared to grid search, randomized search finds models which are as good or even better in much smaller window of time \cite{randomized}. 
+
+\subsubsection{Bayesian optimization}
+Bayesian optimization is an example of Sequential Model-Based Global Optimization (SMBO) technique \cite{tpe}. Unlike randomized search, Bayesian optimization finds the optimal set of hyperparameters sequentially --- during each iteration, new values for hyperparameters are chosen based on the results obtained in the previous iterations \cite{tpe}. It is expected that after a sufficient number of iterations the algorithm will find a set of values of hyperparameters which is in terms performance to a real, optimal set of hyperparameters.
+
+There are several models used with Bayesian optimization, the three most popular are: Gaussian Processes (GP), Random Forests and Tree-Parzen Estimators (TPE) \cite{hyperboost}. Each of the models has specific use cases: Gaussian Processes is a popular choice, but it scales poorly with the number of samples $N$ and dimensions $p$. On the other hand, Random Forest can handle much bigger search spaces.
+
+Bayesian Optimization models the probability
+$p(y|\mathbf{x})$ of performance scores y given the hyperparameters $\mathbf{x}$. On the other hand, Tree-Parzen Estimator model considers density
+functions $p(\mathbf{x}|y < \alpha)$ and $p(\mathbf{x}|y\ge\alpha)$, where $\alpha$ is a specified quantile (such as 15\%) which is used to divide the scores into good and bad ones. Then, one-dimensional Parzen windows (which are used in kernel density estimation) are utilized to model both aforementioned distributions. 
+
+\subsection{Statistical significance}
+Statistical tests can be used to validate the results of machine learning models \cite{demsar}. The demand for such tests has increased with the number of possible applications of machine learning. Examples of such tests used in the context for assessing the performance of models are: t-test, McNemar test and $x\times2$ cross validation \cite{demsar}.
+In order to objectively assess the performance of GBM implementations across several datasets two tests: Wilcoxon signed-ranks test and Friedman test with Nemenyi Post Hoc Analysis have been utilized. 
+
+\subsubsection{Wilcoxon signed-ranks test}
+Paired t-test is one of the parametric tests which checks if the average difference of performance of two classifiers over several datasets is significantly not equal to zero \cite{demsar}. However, the test has some significant disadvantages --- for example, if the number of considered datasets is less than 30, then the paired t-test requires that the differences between performances of two classifiers are distributed according to normal distribution (in practice, normality of the differences is rare). 
+
+A non-parametric alternative to the paired t-test is the Wilcoxon signed-ranks test. In the context of statistical testing in machine learning, for each considered dataset, it ranks the differences of performance and then considers the ranks for differences depending on their sign.
+
+Denote the difference between the performance scores on $i$-th dataset, $i=1,2,\ldots, N$ as $d_i$, where $N$ is the number of datasets. In this work, $d_i$ will be computed as the mean score across fixed number of cross validation folds. Denote the sum of ranks which correspond to datasets on which the second model outperformed the first one as $R^+$ ($R^-$ is defined analogously). Then \cite{demsar}
+\begin{equation}
+\begin{cases}
+    \displaystyle R^+ = \sum_{d_i>0}\mathrm{rank}(d_i) + \frac12\sum_{d_i=0}\mathrm{rank}(d_i)\\
+    \displaystyle R^- = \sum_{d_i<0}\mathrm{rank}(d_i) + \frac12\sum_{d_i=0}\mathrm{rank}(d_i)
+\end{cases}
+\end{equation}
+Taking $T=\min\{R^+, R^-\}$, for larger $N$  the test statistic $z$ \cite{demsar}
+\begin{equation}
+z = \frac{T-\frac 14 N(N+1)}{\sqrt{\frac{1}{24}N(N+1)(2N+1)}}
+\end{equation}
+is approximately distributed according to normal distribution. If the normality assumption for paired t-test is violated, the Wilcoxon test might be more powerful than the t-test \cite{demsar}.
+
+\subsubsection{Friedman test with Nemenyi Post Hoc Analysis}
+In this work, four GBM implementations are being compared: \gbm, thus the Wilcoxon signed-ranks test cannot be reliably used to determine the best performing model out of all four. Thus, it is essential to develop a procedure which will assess the performance of multiple models across different datasets. There are several approaches to such testing; one of them is to use the Wilcoxon signed-ranks test for each pair of models. ANOVA can be used as a more reliable alternative --- however, it assumes normality and equal variance \cite{demsar}.
+
+A non-parametric alternative to ANOVA is the Friedman test. For each dataset, it ranks all used classifiers and in case of ties, an average rank is returned \cite{demsar}. According to the convention presented in \cite{demsar}, the lower the rank the better, however, in this work a higher rank will imply better performance of the classifier.
+
+Denote $r_i^j$ as the rank of the $j-th$ of $k$ models in case of the $i$-th of $N$ datasets. The Friedman test computes the average ranks for each model
+\begin{equation}
+    R_j = \frac 1N \sum_{i=1}^N r_i^j.
+\end{equation}
+Then, if the null hypothesis which states that the performance of all models and their according ranks are indifferent is satisfied, then the Friedman statistic \cite{demsar}
+\begin{equation}\label{eq:friedman_stat}
+    \mathcal{X}_F^2 = \frac{12N}{k(k+1)} \left[\sum_{j=1}^k R_j^2 - \frac{k(k+1)^2}{4}\right]
+\end{equation}
+is said to be distributed according to $\mathcal{X}_F^2$ with $k-1$ degrees of freedom, assuming that $N$ and $k$ are sufficiently large (in \cite{demsar} it is suggested that the number of datasets $N>10$ and number of compared models $k>5$). However, the statistic introduced in Eq.~\eqref{eq:friedman_stat} is too conservative, so an alternative one has been derived
+\begin{equation}\label{eq:iman_dav}
+    F_F = \frac{(N-1)\mathcal{X}_F^2}{N(k-1)-\mathcal{X}_F^2}.
+\end{equation}
+The distribution of $F_F$ is the F-distribution with $k-1$ and $(k-1)(N-1)$ degrees of freedom.
+
+If the null hypothesis of the Friedman test is rejected (i.e. the ranks of the classifiers are different), Post Hoc Analysis can be carried out using two popular approaches \cite{demsar}. The first one uses the Bonferroni correction and is used when the classifiers are compared to a control model. The second one is the Nemenyi test which does not specify a control model (the case which is presented in this work). For a pair of classifiers, their performances are significantly different if their corresponding average ranks exceed the Critical Difference threshold given by
+\begin{equation}\label{eq:CD}
+    CD = q_{\alpha}\sqrt{\frac{k(k+1)}{6N}},
+\end{equation}
+where the values of $q_{\alpha}$ have been given in \cite{demsar}. However, the Nemenyi test is quite conservative and thus it can be expected that in the case of most pairwise comparisons of classifiers the difference of their average ranks will not exceed the Critical Difference threshold given in Eq.~\eqref{eq:CD}.
+
+
+
+
+
+\subsection{Regression trees}
+Decision trees are simple yet quite effective in supervised tasks. They are one of the most interpretable models and can be combined to form a complex and powerful ensemble. The most popular decision tree implementations are CART and C4.5 \cite{esl} --- in this section, the former one will be described in more detail.
+
+Regression trees often serve as base models in gradient boosting, thus it is essential to understand their basic principles. Given a training set $\{y_i,\mathbf{x}_i\}_1^N$ consisting of a random response variable $y$ and a set of explanatory variables $\mathbf{x} = \{x_1,\ldots,x_n\}$, the tree aims to partition the data into $M$ regions $R_1. R_2,\ldots, R_M$. The response in each region is modeled as a constant:
+
+\begin{equation}\label{eq:piecewise}
+    f(x) = \sum_{m=1}^M c_m \mathbbm{1}(x\in R_m)
+\end{equation}
+
+Function $f$ constructed in Eq.~\eqref{eq:piecewise} is thus a piecewise constant function. 
+
+Every supervised machine learning problem leads to an optimization of some arbitrary loss function which is dependent on the type of tasks which is being solved. Trees contain nodes and terminal nodes (leaves) --- nodes are used to partition the data into regions during training process and leaves indicate the final prediction for a given sample $\mathbf{x}$.
+The regression tree algorithm has to find a set of optimal split points and splitting variables such that the value of a criterion function is minimized \cite{esl}. In the case of regression trees, a sum of squares is commonly used; for classification trees, impurity measures, such as Gini index or entropy are considered. A greedy splitting algorithm can be used: starting with the whole dataset, consider a splitting variable $j$ and split point $s$. The split points divides the splitting variable into two disjoint regions \cite{esl}
+\begin{equation}
+    R_1(j,s) = \{X|X_j\le s\}, \;\; R_2(j,s) = \{X|X_j> s\}.
+\end{equation}
+
+Then, the optimal splitting variable $j$ and split point $s$ minimize the following expression:
+\begin{equation}
+    \min_{c_1} \sum_{x_i\in R_1(j,s)} (y_i - c_1)^2 + \min_{c_2} \sum_{x_i\in R_2(j,s)} (y_i - c_2)^2
+\end{equation}
+For each feature, an optimal split point can be found quickly. In case of numerical features with $K\le N$ distinct values, only $K-1$ splitting points will have to be considered. However, decision tree algorithms, such as CART also support categorical features --- in that case, there is only one split point to consider for binary feature, but when the number of categories in greater than two, the number of split candidates is an exponential function of $K$ instead of a linear one --- the algorithm would have to check $2^{K-1} - 1$ possible splits. Gradient boosting implementations mostly support numerical features only, so the greedy splitting algorithm will be computationally feasible. 
+
+After an optimal split has been found, the data is split into two resulting regions and the procedure is repeated for all remaining regions. The tree stops growing when one of the stopping criteria is met (e.g. maximum depth of a tree is reached or a restriction on the minimum number of objects in the leaf is not met). Usually, in implementations of decision trees the maximum depth is not specified which can result in a construction of a very deep tree which may also lead to overfitting. In the case of gradient boosting, shallow regression trees are usually used --- the default maximum depth for GBM implementations which are considered in this work does not exceed 6.  
+
+After the training process is completed, predictions on new data can be made. a test sample $\mathbf{x}$ is passed through the tree until it reaches one of the leaves. Then, the prediction for the test sample $\mathbf{x}$ is the value indicated by the leaf (and that value have been determined during training).
+
+Decision trees are excellent non-parametric models which are quite efficient and interpretable, however, they have some significant disadvantages. They are prone to overfitting and they can be sensitive to small changes in the data. Additionally, they might not be as accurate as other machine learning models. However, ensemble methods such as boosting or bagging can be used to vastly improve the performance of tree-based classifiers. 
+
+\section{The theory behind GBM variants}
+\subsection{Gradient boosting (GBM)}\label{section:gbm}
+Gradient boosting proposed by Friedman in \cite{friedman_gbm} serves as the baseline algorithm for XGBoost \cite{xgboost}, LightGBM \cite{lightgbm} and CatBoost \cite{catboost}, thus, it is essential to understand its basic principles.  
+
+Boosting constructs a strong learner by combining weak learners (i.e. that are slightly better than random guessing) in an iterative way. Different models can be used as a weak learner, e.g. linear functions, neural networks, however, decision trees have become the primary choice both in the case of boosting and gradient boosting. In AdaBoost \cite{adaboost}, decision stumps (decision tree with only two levels and two leaves) have been used to a great extent --- on the other hand, gradient boosting \cite{friedman_gbm} utilizes shallow regression trees. 
+
+Gradient boosting combines the idea of sequentially fitting weak learners with the method of the steepest descent which is used in minimization of an arbitrary loss function $L\left(F(\mathbf{x})\right)$
+\begin{equation}
+    F^\ast = \argmin_F\E_{y,\mathbf{x}}L\left(F(\mathbf{x})\right) = \argmin_F\E_\mathbf{x}\left[\E_y\left(L\left(F(\mathbf{x})\right)\right)|\mathbf{x}\right]
+\end{equation}
+In order to represent a function $F^\ast(\mathbf{x})$ which maps instances $\mathbf{x}$ to responses $y$ gradient boosting uses an additive expansion in form of 
+\begin{equation}\label{eq:F_m}
+    F_m(x) = F_{m-1}(x) + \rho_mh(\mathbf{x};\mathbf{a}_m),
+\end{equation}
+where $\rho_m$ is the weight of the function $h_m$ --- the function $h_m$ itself correspond to used weak learner and $\mathbf{a}_m$ refer to its parameters (e.g. split locations or splitting variables in case of regression trees). The first approximation of $F^\ast(\mathbf{x})$ can be expressed as
+\begin{equation}
+    F_0(x) = \argmin_\rho \sum_{i=1}^N L(y_i,\rho).
+\end{equation}
+Subsequent approximations can be computed by using Eq.~\eqref{eq:F_m}.
+A generic algorithm for gradient boosting has been presented in Algorithm~\ref{alg:gb_1}.
+
+\begin{algorithm}[H]
+\caption{Gradient boosting}\label{alg:gb_1}
+ $\displaystyle F_0(x) = \argmin_\rho \sum_{i=1}^N L(y_i,\rho)$\\
+ \For{$m=1$ to $M$}{\vspace{5pt}
+  $\tilde{y}_i = -\left[\frac{\partial L\left(y_i, F(\mathbf{x}_i)\right)}{\partial F(\mathbf{x}_i)}\right]_{F(\mathbf{x})=F_{m-1}(\mathbf{x})},\, i=1,2,\ldots,N$\\
+  $\displaystyle\mathbf{a}_m = \argmin_{\mathbf{a},\beta}\sum_{i=1}^N\left[\tilde{y}_i-\beta h(\mathbf{x}_i; \mathbf{a})\right]^2$\\
+  $\displaystyle\rho_m = \argmin_{\rho}\sum_{i=1}^NL\left(y_i, F_{m-1}(\mathbf{x}_i)+\rho h(x_i;\mathbf{a}_m)\right)$\\
+  $F_m(x) = F_{m-1}(\mathbf{x})+\nu\cdot\rho_mh(\mathbf{x};\mathbf{a}_m)$\vspace{5pt}
+ }
+\end{algorithm}
+
+Since the loss function $L$ can be arbitrary, algorithm presented in Algorithm~\ref{alg:gb_1} can be used in any supervised task: regression, classification or ranking. Friedman \cite{friedman_gbm} has proposed different variants of Algorithm~\ref{alg:gb_1} depending on used loss function --- he provided examples for loss functions such as Mean Squared Error or Huber loss for regression and negative binomial log-likelihood for classification. The choice of a proper loss function is critical and is strictly dependent on the type of problem which is being solved.
+
+Additionally, a regularization hyperparameter shrinkage $0\le\nu\le 1$ in step 6 of Algorithm~\ref{alg:gb_1} has been introduced. It controls the learning rate of the algorithm and it has been shown by Friedman \cite{friedman_gbm} that its small values (such as $\nu\le 0.1$) can lead to better generalization error.
+
+For each boosting iteration $m,\, m=1,2,\ldots,M$ the function $h(\mathbf{x}_i;\mathbf{a})$ is fit by least squares to pseudo-residuals $\tilde{y}_i$ which can be calculated by taking the negative gradient of the loss function $L$ with respect to $F$ (hence the name of the algorithm --- gradient boosting). Then, the optimal value of $\rho_m$ given in step 5 and given $h(\mathbf{x}_i;\mathbf{a})$ are used to calculate the next approximation $F_m(x)$. Without the least-squares approach, a difficult optimization problem would have to be solved instead \cite{friedman_stoch}:
+\begin{equation}\label{eq:alpha_beta}
+(\mathbf{a}_m, \beta_m) = \argmin_{\mathbf{a}, \beta}\sum_{i-1}^L\left(y_i,F_{m-1}(\mathbf{x}_i)+\beta  h(\mathbf{x}_i;\mathbf{a})\right)
+\end{equation}
+
+The Algorithm~\ref{alg:gb_1} can be greatly optimized when regression trees are the weak learners. The algorithm for gradient boosted decision trees have been presented in Algorithm~\ref{alg:gb_2}.
+
+\begin{algorithm}[H]
+\caption{Gradient boosted decision trees}\label{alg:gb_2}
+ $\displaystyle F_0(x) = \argmin_\rho \sum_{i=1}^N L(y_i,\rho)$\\
+ \For{$m=1$ to $M$}{\vspace{5pt}
+  $\tilde{y}_i = -\left[\frac{\partial L\left(y_i, F(\mathbf{x}_i)\right)}{\partial F(\mathbf{x}_i)}\right]_{F(\mathbf{x})=F_{m-1}(\mathbf{x})},\, i=1,2,\ldots,N$\\
+  $\displaystyle \left\{R_{jm}\right\}_1^J = J\text{---terminal node} \;tree \left(\{\tilde{y}_i, \mathbf{x}_i\}_1^N\right)$\\
+  $\displaystyle\gamma_{jm} = \argmin_\rho\sum_{\mathbf{x}_i\in R_{jm}}L\left(y_i,F_{m-1}(\mathbf{x}_i)+\rho\right),\, j=1,2,\ldots,J$\\
+  $F_m(x) = F_{m-1}(\mathbf{x})+\nu\cdot\gamma_{jm}\mathbbm{1}(\mathbf{x}\in R_{jm})$\vspace{5pt}
+ }
+\end{algorithm}
+
+In case of binary classification, the negative binomial log-likelihood loss function is used:
+\begin{equation}\label{eq:nll}
+    L(y,F) = \log\left(1+e^{-2yF}\right),\; y\in\{-1,1\},
+\end{equation}
+
+where $F(\mathbf{x})$ is given by
+\begin{equation}\label{eq:log_odds}
+    F(\mathbf{x}) = \frac12\log\left[\frac{\Pr(y=1|\mathbf{x})}{\Pr(y=-1|\mathbf{x})}\right]
+\end{equation}
+
+and pseudo-residuals $\tilde{y}_i$ can be calculated as
+\begin{equation}
+    \tilde{y}_i  = 2y_i\mathbin{/}\left(1+\exp(2y_iF_{m-1}(\mathbf{x}_i))\right),\, i=1,2,\ldots,N
+\end{equation}
+
+The algorithm for gradient boosting for binary classification with regression trees as base learners has been presented in Algorithm~\ref{alg:gb_3}. 
+
+\begin{algorithm}[H]
+\caption{Gradient boosted decision trees for classification}\label{alg:gb_3}
+ $\displaystyle F_0(x) = \frac12\log\frac{1+\tilde{y}}{1-\tilde{y}}$\\
+ \For{$m=1$ to $M$}{\vspace{5pt}
+  $\displaystyle\tilde{y}_i = 2y_i\mathbin{/}\left(1+\exp(2y_iF_{m-1}(\mathbf{x}_i))\right),\, i=1,2,\ldots,N$\\[3pt]
+  $\displaystyle \left\{R_{jm}\right\}_1^J = J\text{---terminal node} \;tree \left(\{\tilde{y}_i, \mathbf{x}_i\}_1^N\right)$\\
+  $\displaystyle\gamma_{jm} = \sum_{\mathbf{x}_i\in R_{jm}}\tilde{y}_i\,\mathbin{/}\hspace{-7pt}\sum_{\mathbf{x}_i\in R_{jm}}|\tilde{y}_i|(2-|\tilde{y}_i|),\, j=1,2,\ldots,J$\\
+  $\displaystyle F_m(x) = F_{m-1}(\mathbf{x})+\nu\sum_{j=1}^J\gamma_{jm}\mathbbm{1}(\mathbf{x}\in R_{jm})$\vspace{5pt}
+ }
+\end{algorithm}
+
+The final approximation $F_M(x)$ can then be used with Eq.~\eqref{eq:log_odds} to calculate probabilities of belonging to either one of the classes:
+\begin{equation}
+    p_{+\mathbin{/}-}(x) = \widehat{\Pr}(y=\pm 1\,|\,\mathbf{x}) = \left(1+e^{\pm 2F_M(\mathbf{x})}\right).
+\end{equation}
+
+Prediction $\hat{y}(\mathbf{x})$ is given by
+\begin{equation}
+   \hat{y}(\mathbf{x}) = 2\cdot \mathbbm{1}\left[p_+(\mathbf{x}) > p_-(\mathbf{x}) \right] - 1 \in \{-1,1\}.
+\end{equation}
+
+Due to the fact that regression trees are being used, gradient boosting natively does not support multiclass classification. Instead, non-binary classification is done using either One-vs-Rest or One-vs-One strategy, however, the former is used more commonly due to its computational efficiency \cite{sklearn}. In the binary case $M$ trees are fitted, but if the number of classes is greater than two, then the number of used trees increases to $n_{classes}\cdot M$ which may significantly increase the training time.
+
+In Friedman \cite{friedman_stoch} introduced the idea of stochastic gradient boosting. By default, in each iteration $m,\,m=1,2,\ldots,M$ the base learner is fitted on a full dataset of size $N$ ($N$ samples).
+In case of stochastic gradient boosting a subsample of size $\tilde{N}$ of the full dataset is drawn without replacement --- then, the aforementioned subsample is used to train the base learner. A full algorithm have been presented in Algorithm~\ref{alg:gb_4}.
+
+\begin{algorithm}[H]
+\caption{Stochastic gradient boosted decision trees}\label{alg:gb_4}
+ $\displaystyle F_0(x) = \argmin_\rho \sum_{i=1}^N L(y_i,\rho)$\\
+ \For{$m=1$ to $M$}{\vspace{5pt}
+  $\{\pi(i)\}_1^N = \text{random permutation}\,\{i\}_1^N$\\
+  $\tilde{y}_{\pi(i)} = -\left[\frac{\partial L\left(y_{\pi(i)}, F(\mathbf{x}_{\pi(i)})\right)}{\partial F(\mathbf{x}_{\pi(i)})}\right]_{F(\mathbf{x})=F_{m-1}(\mathbf{x})},\, i=1,2,\ldots,\tilde{N}$\\
+  $\displaystyle \left\{R_{jm}\right\}_1^J = J\text{---terminal node} \;tree \left(\{\tilde{y}_{\pi(i)}, \mathbf{x}_{\pi(i)}\}_1^{\tilde{N}}\right)$\\
+  $\displaystyle\gamma_{jm} = \argmin_\rho\sum_{\mathbf{x}_{\pi(i)}\in R_{jm}}L\left(y_{\pi(i)},F_{m-1}(\mathbf{x}_{\pi(i)})+\rho\right),\, j=1,2,\ldots,J$\\
+  $F_m(x) = F_{m-1}(\mathbf{x})+\nu\cdot\gamma_{jm}\mathbbm{1}(\mathbf{x}\in R_{jm})$\vspace{5pt}
+ }
+\end{algorithm}
+From this moment, gradient boosting will refer to stochastic gradient boosted decision trees Algorithm presented in Algorithm~\ref{alg:gb_4}. Note that gradient boosted decision trees algorithm presented in Algorithms~\ref{alg:gb_2} and \ref{alg:gb_3} is a special case of the  stochastic variant with subsample equal to 1. 
+
+In Friedman \cite{friedman_stoch} it has proven that introducing randomness in form of subsampling can lead to increase of performance of the gradient boosting algorithm. In addition to row-wise subsampling, feature-wise randomness can be also introduced. The original paper on stochastic gradient boosting \cite{friedman_stoch}  only introduced row subsampling, but GBM implementations often feature column subsampling. There are three hyperparameters which control feature subsampling\footnote{\url{xgboost.readthedocs.io/en/stable/parameter.html}}:
+
+\begin{itemize}
+    \item\emph{colsample\_bytree} --- the ratio of columns to consider when constructing each tree
+    \item\emph{colsample\_bylevel} --- the ratio of columns to consider on each level of each tree
+    \item\emph{colsample\_bynode} --- the ratio of columns to consider when looking for a best split
+\end{itemize}
+Column sampling in each split (\emph{colsample\_bynode}) has been originally proposed by Leo Breiman in \cite{random_forest}; it is an integral part of the Random Forest algorithm.
+
+Row-wise (\emph{subsample} hyperparameter) and feature-wise subsampling hyperparameters will be considered when using any of the GBM implementations: gradient boosting \cite{friedman_gbm}, XGboost \cite{xgboost}, LightGBM \cite{lightgbm} or CatBoost \cite{catboost}.  
+
+\subsection{eXtreme Gradient Boosting (XGBoost)}
+XGBoost is a end-to-end scalable tree boosting system which achieves state-of-the-art performance in different machine learning tasks \cite{xgboost}. XGBoost has introduced many improvement to the baseline GBM algorithm \cite{friedman_gbm}, such as regularized learning objective or novel approximate algorithm for finding the best split.
+
+Regularization is an integral component of many machine learning algorithms. Gradient boosting \cite{friedman_gbm} had only one regularization hyperparameter (shrinkage $\nu$), but authors of XGBoost have managed to implement L2 and L1 regularization and $\gamma$ regularization hyperparameter into their algorithm. It is worth noting that regularization in L1 has never been described in the implementation paper \cite{xgboost} or in the literature, however, it is available in the implementation. The proper choice of XGBoost's regularization hyperparameters has not been discussed in the literature yet --- in this work, we have carried out such analysis in Section~\ref{section:xgboost_regularization}.
+
+XGBoost uses modified regularized loss function in form of (the notation is the same as in the case of gradient boosting presented in Section~\ref{section:gbm}) \cite{comparative_analysis}
+\begin{equation}\label{eq:xgboost_loss}
+    L_{xgb} = \sum_{i=1}^N L\left(y_i, F(\mathbf{x}_i)\right) + \sum_{m=1}^M \Omega\left(h(\mathbf{x};\mathbf{a}_m)\right)
+\end{equation}
+where
+\begin{equation}
+    \Omega\left(h(\mathbf{x};\mathbf{a}_m)\right) = \gamma T + \frac12\lambda \lVert w\rVert^2 = \gamma T +\frac12\lambda\sum_{j=1}^T w_j^2,
+\end{equation}
+where $\gamma$ is minimum loss reduction required to make a split, $T$ is the tree size (number of leaves), $w$ is a vector of leaf scores and $\lambda$ controls the strength of L2 regularization. Hyperparameter $\gamma$ is unique to XGBoost --- in each iteration, after construction of corresponding tree $\gamma$ is used to prune it; $\gamma$ and cost-complexity pruning hyperparameter used in decision trees have similar interpretations, however, $\gamma$-pruning is also dependent on the value of $\lambda$ \cite{xgboost}. On the other hand, $\lambda$ can be also used in implementations of LigthGBM \cite{lightgbm} and CatBoost \cite{catboost}. Additionally, XGBoost in fact uses a second-order Taylor approximation of the loss function \cite{xgboost}, \cite{add_log}, therefore the user can specify a custom loss function --- then, the algorithm takes the gradient and hessian of aforementioned loss function as input.
+
+XGBoost has implemented several different splitting algorithms \cite{xgboost}:
+\begin{itemize}
+    \item\emph{exact} greedy algorithm which is commonly used in GBM implementations --- to find the best split, one has to enumerate all possible split points and features
+    \item\emph{approx} algorithm which uses novel Weighted Quantile Sketch algorithm \cite{xgboost} to find a subset of candidate splits
+    \item\emph{hist} algorithm --- a highly scalable histogram-based method which greatly decreases the time to fit the model (more information on the histogram algorithm will be provided in Section~\ref{section:lightgbm})
+    \item\emph{gpu hist} --- a GPU version of the histogram model.
+\end{itemize}
+XGBoost chooses the optimal splitting algorithm heuristically by considering the size of the dataset at the input. Additionally, sparse features (which contain a lot of zero values) as well as missing values are supported \cite{comparative_analysis}, \cite{comparison_of} --- during training, XGBoost removes aforementioned entries when determining the optimal split and then allocates them to either side of the split (which also speeds up the fitting time). In \cite{xgboost} it has been also mentioned that the sparsity-aware splitting algorithm greatly reduces the runtime of the algorithm compared to other GBM implementations which only support dense data.
+
+Moreover, XGBoost implemented several other improvements which help to make the model faster and more scalable \cite{xgboost}. During each boosting iteration, a tree can be built in parallel (i.e. the algorithm can perform splits on multiple nodes simultaneously). Additionally, support for out-of-core computations have been implemented as well as effective data compression, which makes XGBoost a scalable tree boosting system.
+
+\subsection{Light Gradient Boosting Machine (LightGBM)}\label{section:lightgbm}
+LightGBM \cite{lightgbm} is a GBM library which emphasizes the computational aspect and scalability of gradient boosting. The most notable improvements above the basic GBM algorithm \cite{friedman_gbm} are: leaf-wise tree growth, histogram-based splitting algorithm, Gradient-based One-Side Sampling and Exclusive Feature Bundling.
+
+Algorithms such as gradient boosting \cite{friedman_gbm}, XGBoost \cite{xgboost} and CatBoost \cite{catboost} grow trees level-wise. On the other hand, LightGBM\footnote{\url{lightgbm.readthedocs.io/en/latest/Features.html\#references}} uses leaf-wise growth which produces trees with less regular structure. A graphical representation of leaf-wise growth has been presented in Figure~\ref{fig:lightgbm_leaf_wise}.
+
+\begin{figure}[H]
+	\centering
+		\scalebox{0.5}{\includegraphics{plots/leaf-wise.png}}
+	\caption{LightGBM's leaf-wise tree growth. Source: \url{lightgbm.readthedocs.io/en/latest/Features.html\#references}}
+	\label{fig:lightgbm_leaf_wise}
+\end{figure}
+
+Leaf-wise tree growth algorithm tend to achieve lower overall values of the loss function and faster training time. On the other hand, such trees are prone to overfitting especially when the number of training samples in low or when the tree grows very deeply (i.e. number of leaves might be low, but the tree may grow in such a way that it achieves great depth) --- both drawbacks can be alleviated by mindfully controlling the \emph{max\_depth} of the tree. 
+
+Histogram-based splitting algorithms have been implemented in XGBoost \cite{xgboost} and LightGBM \cite{lightgbm}. The greedy splitting algorithm which enumerates all possible splits and features can be very inefficient especially when the size of the data is large or the features have high cardinality (more unique values in a given feature imply bigger number of possible split candidates to check). Thus, it is reasonable to lower the cardinality of features --- it can be achieved by grouping values in a given feature into bins. Numerical columns are then represented by ordinal categorical variables $0,1,\ldots,max\_bin-1$. Then, if a original feature has $K$ distinct values, only $max\_bin-1$ splits will have to be considered instead of $K-1$. Histogram-based splitting algorithm tend to greatly increase the scalability of the algorithm and can help to reduce overfitting. There is a trade-off between decreased runtime and model performance --- the higher the value of $max\_bin$, the less time will be needed to train the model, but the higher the probability of degradation in performance. 
+
+LightGBM introduced novel sample weighting with Gradient-based One-Side Sampling (GOSS) --- baseline GBM algorithm \cite{friedman_gbm} do not support such data sampling. The idea of GOSS originates from AdaBoost \cite{adaboost}, where misclassified samples have higher probability of being included in bootstrap samples used in subsequent training iterations. Using GOSS can lead to decreased training time while preserving accuracy. The  In \cite{lightgbm} it is assumed that instances with small absolute value of gradient are well-trained since the error for those instances is already small. Moreover, samples identified by big absolute value of gradient (i.e. the rate of change of the loss function) are deemed to more relevant because they cause higher fluctuations in the loss function, thus they should be prioritized during the training process. However, discarding values with small gradient entirely would decrease model's performance. It is worth noting that \emph{subsample} hyperparameter cannot be used when GOSS boosting mode is enabled.
+
+GOSS's behaviour is controlled by two hyperparameters: $a$ (\emph{top\_rate}) and $b$ (\emph{other\_rate}) \cite{lightgbm}. Firstly, it sorts all samples according to their respective absolute values of gradients. Then, the algorithm selects the top $a\cdot 100\%$ instances. Then $b\cdot 100\%$ instances are sampled from the rest of the data. In order to compensate for a potential change of distribution in the data, samples with small absolute value of gradient are multiplied by a factor of $\frac{1-a}{b}$ when calculating the information gain in each split. 
+
+Exclusive Feature Bundling (EFB) algorithm has been proposed in order to deal with datasets containing high number of features more efficiently. In \cite{lightgbm} it has been mentioned that highly dimensional data is usually sparse which provides a great opportunity to design a nearly losless procedure which bundles features into \emph{exclusive feature bundle}. Similarly to GOSS, EFB has also been designed to speed up the training time without sacrificing the model's accuracy. 
+
+Additionally, LightGBM offers tremendous number of available hyperparameters. In order to use LightGBM to its full potential, it is essential to examine the sensitivity of the algorithm to different values of hyperparameters --- in this work, we analyzed their impact on LightGBM's performance in Section~\ref{section:lightgbm_tuning}. In addition to GOSS, LightGBM offers three different boosting procedures: original GBDT algorithm proposed by Friedman \cite{friedman_gbm}, DART (Dropouts meet Multiple Additive Regression Trees) and Random Forest. Moreover, L1 as well as L2 regularization is available.
+
+\subsection{Categorical Boosting (CatBoost)}
+CatBoost has been designed to effectively process categorical features during the training process as well as address the issue of prediction shift which occurs in almost any implementation of gradient boosting. The prediction shift refers to a change of distribution of $F(\mathbf{x}_k)|\mathbf{x}_k$ for a training sample $\mathbf{x}_k$ from the distribution of $F(\mathbf{x})|\mathbf{x}$, where $\mathbf{x}$ is a test sample. In \cite{catboost} it has been also mentioned that prediction shift also occurs in case of categorical variables preprocessing --- gradient boosting implementations tend to convert aforementioned features into their target statistics, however, such approach can also lead to a prediction shift. In \cite{catboost} a boosting procedure called Ordered boosting has been proposed which solves the issue of prediction shift both during training and categorical variables preprocessing. A traditional "Plain" non-ordered gradient boosting algorithm has also been implemented, it is available when \emph{boosting\_type} is set to Plain. The algorithm for Ordered boosting has been presented in Algorithm~\ref{alg:ordered}.
+
+\begin{algorithm}[H]
+\caption{CatBoost's Ordered boosting}\label{alg:ordered}
+\SetKwInOut{Input}{input}
+\Input{$\left\{(\mathbf{x}_k, y_k)\right\}_{k=1}^N$\\
+ $I$ --- number of iterations\\
+ $\sigma$ --- random permutation of $[1,N]$\\
+ $M_i = 0$ for $i=1,2,\ldots,N$}
+ \For{$m=1$ to $I$}{\vspace{5pt}
+ \For{$i=1$ to $N$}{
+ $r_i = y_i - M_{\sigma(i)-1}(\mathbf{x}_i)$\\
+ }
+ \For{$i=1$ to $N$}{
+ $\Delta M = LearnModel\left((\mathbf{x}_j, r_j)\colon \sigma(j)\le i\right)$\\
+ $M_i = M_i + \Delta M$\\
+ }
+  \vspace{5pt}
+ }
+ \Return $M_N$
+\end{algorithm}
+
+Additionally, the process is repeated for $s$ different random permutations \cite{comparative_analysis}.
+The idea of Algorithm~\ref{alg:ordered} is to build $N$ submodels for each iteration --- such approach is highly inefficient, because the total number of trees built would be equal to $s\cdot N\cdot I$. Instead, the implementation of CatBoost has been optimized in such a way that a single model handles all permutations and submodels. Symmetric (also called oblivious) regression trees serve as base models, the concept of a symmetric tree has been presented in Figure~\ref{fig:symmetric_trees}.
+
+\begin{figure}[H]
+	\centering
+		\scalebox{0.40}{\includegraphics{main/plots/symmetric_trees.png}}
+	\caption{The concept of a symmetric tree. Source: \url{towardsdatascience.com/introduction-to-gradient-boosting-on-decision-trees-with-catboost-d511a9ccbd14}}
+	\label{fig:symmetric_trees}
+\end{figure}
+
+Other GBM implementations, such as gradient boosting \cite{friedman_gbm}, XGBoost \cite{xgboost} or LightGBM \cite{lightgbm} build asymmetric trees, either level-wise (GBM and XGBoost) or leaf-wise (LightGBM). Symmetric trees are balanced, they use the same split condition for each level of the tree. Two benefits of using oblivious trees is decreased time for the model to make predictions and lesser risk of overfitting \cite{catboost}. 
+
+One of the main features of CatBoost is its ability to process categorical variables efficiently. In \cite{catboost} it has been mentioned that the prediction shift also occurs when processing such variables. It is indicated that GBM implementations which use target statistics with categorical features did not address the issue of prediction shift at all, so in \cite{catboost} an alternative method for categorical variables has been proposed. The algorithm resembles Ordered boosting, because it combines the usage of target statistics (it is a supervised method; categorical features are substituted with expected target or class value for each category \cite{comparative_analysis}) with permutation-based approach. Using target statistics can lead to overfitting, however, the approach presented in \cite{catboost} called Ordered TS solves this exact problem. In \cite{catboost} it has been stated that in order to minimize the risk of prediction shift, it is recommended to use identical permutations for both categorical variables processing and training ($\sigma_{cat} = \sigma_{boost}$) --- such solution has been included in CatBoost's implementation when using Ordered boosting. We have tested different methods of categorical variables preprocessing as well as the significance of using different permutations in Section~\ref{section:cat_comparison}.
+
+CatBoost by default chooses the optimal learning rate (or shrinkage) during the training process --- thus, it is likely that shrinkage $\nu$ is not a hyperparameter that needs to be tuned or even considered at all; the algorithm should choose its optimal value by itself. On the other hand, unlike XGBoost or LightGBM CatBoost does not handle sparse data uniquely, which might be undesirable in case of some datasets. Moreover, processing of missing data is also handled in a different way compared to XGBoost or LightGBM --- missing values are imputed with either minimum or maximum value for a given feature \cite{catboost}. Lastly, unlike XGBoost or LightGBM CatBoost unfortunately does not support L1 regularization which may negatively impact the model's generalization ability.
+
+\subsection{Relevant hyperparameters available in GBM implementations}
+Since each of the GBM implementations --- \gbm has a wide pool of available hyperparameters, it is reasonable to emphasize the most important ones for each implementation. A summary has been presented in Table~\ref{tab:relevant_params}.
+\begin{table}[h!]
+\centering
+\resizebox{450pt}{!}{%
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+ &
+  \textbf{GBM} &
+  \textbf{XGBoost} &
+  \textbf{LightGBM} &
+  \textbf{CatBoost} \\ \hline
+\textbf{\begin{tabular}[c]{@{}c@{}}boosting\\ type\end{tabular}} &
+  GBDT &
+  \begin{tabular}[c]{@{}c@{}}exact greedy\\ approx\\ histogram\\ GPU hist\end{tabular} &
+  \begin{tabular}[c]{@{}c@{}}GBDT\\ DART\\ Random Forest\\ GOSS\end{tabular} &
+  \begin{tabular}[c]{@{}c@{}}Plain\\ Ordered\end{tabular} \\ \hline
+\textbf{regularization} &
+  learning rate $\nu$ &
+  \begin{tabular}[c]{@{}c@{}}learning rate $\nu$\\ L1 $\alpha$\\ L2 $\lambda$\\ gamma $\gamma$\end{tabular} &
+  \begin{tabular}[c]{@{}c@{}}learning rate $\nu$\\ L1 $\alpha$\\ L2 $\lambda$\end{tabular} &
+  \begin{tabular}[c]{@{}c@{}}learning rate $\nu$\\ L2 $\lambda$\end{tabular} \\ \hline
+\textbf{randomization} &
+  \begin{tabular}[c]{@{}c@{}}subsample\\ \emph{colsample\_bynode}\end{tabular} &
+  \begin{tabular}[c]{@{}c@{}}subsample\\ \emph{colsample\_bytree}\\ \emph{colsample\_bylevel}\\ \emph{colsample\_bynode}\end{tabular} &
+  \begin{tabular}[c]{@{}c@{}}subsample\\ \emph{colsample\_bytree}\\ \emph{colsample\_bynode}\end{tabular} &
+  \begin{tabular}[c]{@{}c@{}}subsample\\ \emph{colsample\_bylevel}\end{tabular} \\ \hline
+\textbf{\begin{tabular}[c]{@{}c@{}}unique\\ parameters\end{tabular}} &
+  \begin{tabular}[c]{@{}c@{}}cost-complexity \\ pruning $\alpha_{ccp}$\end{tabular} &
+  \begin{tabular}[c]{@{}c@{}}linear booster\\ custom loss function\end{tabular} &
+  \begin{tabular}[c]{@{}c@{}}number of leaves\\ top rate $a$\\ other rate $b$\end{tabular} &
+  \begin{tabular}[c]{@{}c@{}}categorical, text features\\ bagging temperature\\ leaf estimation iterations\\ Stochastic Gradient\\  Langevin Boosting\end{tabular} \\ \hline
+\end{tabular}
+}
+\caption{A summmary of the most relevant and unique hyperparameters for each of the GBM implementation}
+\label{tab:relevant_params}
+\end{table}
+Since each implementation is different, each one of them will have a set of unique hyperparameters which are unavailable in other ones. The hyperparameters presented in Table~\ref{tab:relevant_params} as well as their specific values which will be used will be discussed in Sections~\ref{section:baseline}, \ref{section_tpe} and \ref{section_rand}.
+
+
+
+
 \chapter{Experimental results}\label{chapter:results}
 Gradient boosting, XGBoost, LightGBM and CatBoost are highly complex algorithms, thus it is crucial to compare and analyze them on different axes. In this chapter results of several different experiments have been presented:
 \begin{enumerate}
-    \item Comparison of performance metrics of GBM implementations across real datasets
-    \item Analysis of XGBoost regularization hyperparameters
-    \item Comparison of categorical variables encodings on the basis of CatBoost
-    \item Assessment of feature importances across Gradient boosting, XGBoost, LightGBM and CatBoost. 
+    \item Overall comparison of GBM implementations' performance across real datasets
+    \item Analysis of XGBoost' ability to generalize while considering different regularization hyperparameters
+    \item Impact of selected hyperparameters on LightGBM's performance
+    \item Comparison of categorical variables encodings on the basis of CatBoost.
 \end{enumerate}
+Due to high computational demand, the first experiment have been performed using a cloud-based environment Google Colab\footnote{\url{colab.research.google.com/}} with 25GB of RAM memory available. Experiments 2---4 have been conducted on a personal computer with 8GB of RAM. In both cases, the computations have been done on CPU.
+
 \section{Used benchmark datasets}\label{section:real_datasets}
 GBM implementations, as well as other Machine Learning algorithms are usually used in practical scenarios, thus it is essential to use real datasets in the comparative analysis. In total, twelve publicly accessible datasets have been considered --- some of them are well known staples in the data science community. Some characterisitcs of the used raw data which will be considered have been presented in Table~\ref{tab:datasets}.
 \newpage
@@ -228,8 +649,8 @@ mushrooms\footnote{\url{www.kaggle.com/datasets/uciml/mushroom-classification}} 
 breast cancer\footnote{\url{www.kaggle.com/datasets/uciml/breast-cancer-wisconsin-data}}     & 569                & 30                  & 2                  & numerical     \\ \hline
 churn\footnote{\url{www.kaggle.com/datasets/blastchar/telco-customer-churn}}             & 7043               & 20                  & 2                  & mixed         \\ \hline
 credit card fraud\footnote{\url{www.kaggle.com/datasets/mlg-ulb/creditcardfraud}} & 30000              & 30                  & 2                  & numerical     \\ \hline
-prostate\footnote{\url{url}}          & 102                & 6033                & 2                  & numerical     \\ \hline
-leukemia\footnote{\url{url}}          & 72                 & 3571                & 2                  & numerical     \\ \hline
+prostate \cite{microrray_data}        & 102                & 6033                & 2                  & numerical     \\ \hline
+leukemia \cite{microrray_data}         & 72                 & 3571                & 2                  & numerical     \\ \hline
 gina agnostic\footnote{\url{www.openml.org/search?type=data&status=active&id=1038}}     & 3468               & 970                 & 2                  & image, sparse \\ \hline
 weather\footnote{\url{data.mendeley.com/datasets/4drtyfjtfy/1}}           & 1125               & 2500                & 4                  & image         \\ \hline
 IMDB reviews\footnote{\url{www.kaggle.com/lakshmi25npathi/imdb-dataset-of-50k-movie-reviews}}      & 10000              & 10000               & 2                  & NLP, sparse   \\ \hline
@@ -237,68 +658,66 @@ IMDB reviews\footnote{\url{www.kaggle.com/lakshmi25npathi/imdb-dataset-of-50k-mo
 \caption{Benchmark datasets used for analysis}
 \label{tab:datasets}
 \end{table}
-Variety across datasets summarized in \ref{tab:datasets} is substantial --- they have been chosen mindfully so that the algorithms can be tested in several different scenarios. Raw data varies in number of rows, features (both numerical and categorical), classes and also in the class imbalance and type. Two datasets --- \emph{credit card fraud} and \emph{IMDB reviews} have been downsampled in order to reduce the computational effort; \emph{credit card fraud} originally contains over 27 thousand rows while \emph{IMDB reviews} has exactly 50 thousand reviews. Also, \emph{adult study}, \emph{heart disease} and \emph{churn} datasets contain 7, 3 and 10 categorical features, respectively --- each of them vary in cardinality (its high value can be challenging for decision tree algorithms).
+Variety across datasets summarized in \ref{tab:datasets} is substantial --- they have been chosen mindfully so that the algorithms can be tested in several different scenarios. Raw data varies in number of rows, features (both numerical and categorical), classes and also in the class imbalance and type. Two datasets --- \emph{credit card fraud} and \emph{IMDB reviews} have been downsampled in order to reduce the computational effort; \emph{credit card fraud} originally contains over 280 thousand rows while \emph{IMDB reviews} has exactly 50 thousand reviews. Additionally, the class distribution in the case of \emph{credit card fraud} is highly imbalanced --- the positive class accounts for 0.172\% of all labels. Also, \emph{adult study}, \emph{heart disease} and \emph{churn} datasets contain 7, 3 and 10 categorical features, respectively --- each of them vary in cardinality (its high value can be challenging for decision tree algorithms).
 
-Minor preprocessing of the data has been performed: a redundant feature \emph{education} have been deleted from the \emph{adult study} dataset. Also, numerical features from two out of three unstructured datasets: \emph{weather} and \emph{IMDB reviews} have been extracted. In case of the \emph{weather} database, all images have been resized to 256x256 pixels and converted to grayscale. Then, an area of size 50x50 have been cropped from the center of each picture. Finally, each sample is represented by a vector of length 2500 which contains the values of pixels --- such approach is not perfect, because the geometrical structure of the image is lost, however, in case of many Machine Learning algorithms it is the only one. 
+Minor preprocessing of the data has been performed: a redundant feature \emph{education} have been deleted from the \emph{adult study} dataset. Also, numerical features from two out of three unstructured datasets: \emph{weather} and \emph{IMDB reviews} have been extracted. In case of the \emph{weather} database, all images have been resized to 256x256 pixels and converted to grayscale. Then, an area of size 50x50 have been cropped from the center of each picture. Finally, each sample is represented by a vector of length 2500 which contains the values of pixels --- such approach is not perfect, because the geometrical structure of the image is lost, however, in case of many Machine Learning algorithms it is the only possibility.
 
 \section{Performance metrics comparison}
 In this section, all four GBM implementations: Gradient boosting, XGBoost, LightGBM and CatBoost have been thoroughly compared on all twelve datasets which have been presented in Section~\ref{section:real_datasets}. It was crucial to design a procedure which would allow model selection and model assessment in the most correct way possible.
 
 \subsection{Model selection and assessment}
-In applications, the performance of models can be judged and assessed by different criteria, therefore, it was essential to choose appropriate evaluation metrics --- three common ones have been chosen:
+In applications, the performance of models can be judged and assessed by different criteria, therefore, it was essential to choose appropriate evaluation metrics --- three metrics introduced in section \ref{section:metrics} have been chosen:
 
 \begin{enumerate} % to do sekcji teoretycznej, zostawić tylko nazwy bez enumerate
-    \item accuracy --- the fraction of predictions which are correct
-    \item f1 score --- the harmonic mean of precision and recall (sensitivity) metrics given by
-    \begin{equation}\label{eq:F1}
-        F1 = \frac{2}{\frac{1}{precision} + \frac{1}{recall}} = 2\cdot \frac{precision\cdot recall}{precision + recall}.
-    \end{equation}
-    In the multi-class classification case weighted F1 has been chosen; it calculates the F1 score given by Eq.\eqref{eq:F1} for each label. A weighted mean of the scores is constructed, where each weight correspond to the number of true instances for a given label.
-    \item ROC AUC score --- Area Under the Receiver Operating Characteristic Curve obtained from prediction scores. For multi-class problems, weighted AUC with One-vs-rest configuration is used. The score is computed similarly to weighted F1 score.
+    \item accuracy
+    \item F1 score --- in the multi-class classification case weighted F1 has been chosen; it calculates the F1 score given by Eq.\eqref{eq:F1} for each label. A weighted mean of the scores is constructed, where each weight correspond to the number of true instances for a given label.
+    \item ROC AUC score --- for multi-class problems, weighted AUC with One-vs-rest configuration is used. The score is computed similarly to weighted F1 score.
 \end{enumerate}
 
-Accuracy is most likely the most used evaluation metric in data mining, however, it sometimes may impose misleading conclusions. In the case of datasets with highly imbalanced distribution of labels (e.g. \emph{credit card fraud} presented in Table~\ref{tab:datasets}) it may yield over optimistic results. F1 score is a perfect substitution for accuracy in such cases, as it is more resistant to class imbalance. However, both accuracy and F1 score are dependent on the value of the cutoff point (it is equal to 0.5 by default). Since tree ensemble algorithms are capable of calculating prediction scores, ROC AUC score can be used to assess the performance of gradient boosting algorithms. It summarizes the classifiers' performance based on the true positive rate and false positive rate tradeoff for different values of the aforementioned cutoff value. Overall, the choice of accuracy, F1 score and AUC as model assessment metrics may expose some strengths and weaknesses of considered GBM implementations --- for example, some may perform well in terms of accuracy and F1 score but may be worse when considering AUC.
+Accuracy for some datasets may impose misleading conclusions. In the case of datasets with highly imbalanced class distribution (e.g. \emph{credit card fraud} presented in Table~\ref{tab:datasets}) it may yield over optimistic results. F1 score is a perfect substitution for accuracy in such cases, as it is more resistant to class imbalance. Since tree ensemble algorithms are capable of calculating prediction scores, ROC AUC score can be used to assess the performance of gradient boosting algorithms. Overall, the choice of accuracy, F1 score and AUC as model assessment metrics may expose some strengths and weaknesses of considered GBM implementations --- for example, some variants may perform well in terms of accuracy and F1 score but may be worse when considering AUC.
 
-A mindful evaluation procedure has been designed to assess the performance of GBM, XGBoost, LightGBM and CatBoost --- nested cross validation scheme and hyperparameter tuning have been used. For each model and dataset the evaluation process is exactly the same, it can be summarized in the following steps:
+A mindful evaluation procedure has been designed to assess the performance of GBM, XGBoost, LightGBM and CatBoost --- two separate cross validation schemes for hyperparameter tuning and model evaluation have been used. For each model and dataset the evaluation process is exactly the same, it can be summarized in the following steps:
 \texttt{
 \begin{enumerate}\label{eval_scheme}
     \item Given the input features matrix $X$ and labels $y$ from the dataset $D$:
     \begin{itemize}
-    \item partition the data using stratified 5-fold inner cross validation scheme (\emph{inner cv}) used for hyperparameter tuning
-    \item partition the data using stratified 10-fold outer cross validation scheme (\emph{outer cv}) used for final evaluation
+    \item partition the data using stratified 5-fold cross validation scheme (\emph{tuning cv}) used for hyperparameter tuning
+    \item partition the data using stratified 10-fold cross validation scheme (\emph{eval cv}) used for final evaluation
     \end{itemize}
     \item Perform model selection with the use of hyperparameter search; for each iteration of tuning:
     \begin{itemize}
     \item Sample the values of tuned hyperparameters from the search space \\given as input
-    \item for each train and test set partition in \emph{inner cv}:
+    \item for each train and test set partition in \emph{tuning cv}:
     \begin{itemize}
     \item fit the model on the training set and make prediction on the \\test set
     \item Record the value of log loss on the test set
     \end{itemize}
-    \item calculate the mean value of log loss across 10 folds of \emph{inner cv}
+    \item calculate the mean value of log loss across 10 folds of \emph{tuning cv}
     \item Choose the combination of hyperparameters which minimizes the mean value of log loss. Model selection is completed
     \end{itemize}
-    \item Perform model assessment; for each train and test partition in \emph{outer cv}:
+    \item Perform model assessment; for each train and test partition in \emph{eval cv}:
     \begin{itemize}
     \item fit the model chosen in the model selection phase and make prediction on the test set
     \item Record the values of accuracy, f1 score and AUC on the test set
     \end{itemize}
-    \item Save the values of evaluation metrics computed across 10 iterations of \emph{outer cv}
+    \item Save the values of evaluation metrics computed across 10 iterations of \emph{eval cv}
     \item Repeat steps 1-4 for each combination of GBM implementation and dataset.
 \end{enumerate}
 }
 
-The purpose of cross-validation scheme is to evaluate the model's ability to generalize on unseen data. Unfortunately, it is sometimes incorrectly used in conjunction with hyperparameter tuning --- often, the same cross-validation scheme is used both for model selection and model assessment. Such approach can lead to exaggeration of model's performance, especially when the same metric (such as accuracy or AUC) is used during hyperparameter tuning and final evaluation. Nested cross-validation solves the described problem by introducing two different cross-validation splits: the inner and outer one. 
-It is computationally expensive, however, it should evaluate model's performance in the most reliable and realistic way. Also, to ensure consistency and reproducibility of results, for given dataset cross-validation splits (both \emph{inner} and \emph{outer cv}) are exactly the same. For example, in case of \emph{adult study} dataset, the same samples will be used to train all four GBM models in the first iteration of cross-validation. All subsequent iterations will display the same behaviour. 
+The purpose of cross validation scheme is to evaluate the model's generalization ability. Unfortunately, it is sometimes incorrectly used in conjunction with hyperparameter tuning --- often, the same cross validation scheme is used both for model selection and model assessment. Such approach can lead to exaggeration of model's performance, especially when the same metric (such as accuracy or AUC) is used during hyperparameter tuning and final evaluation. The procedure introduced in Scheme~\ref{eval_scheme} solves the described problem by introducing two different cross validation splits: the 5-fold \emph{tuning} and 10-fold \emph{eval} one.
+It is computationally expensive, however, it should evaluate model's performance in a reliable and realistic way. Also, to ensure consistency and reproducibility of results, for given dataset cross validation splits (both \emph{tuning} and \emph{eval cv}) are exactly the same. For each dataset, the same samples will be used to train all four GBM models in all iterations of cross validation. 
 
-In addition to the three metrics: accuracy, F1 score and AUC which measure models' predictive ability, two additional metrics related to computational efficiency will be considered, namely the runtime and tuning time. Runtime is the time measured to perform model assessment described in the step 2 in Scheme~\ref{eval_scheme} while details about tuning time are included in the step 3. In any practical use cases the time to perform hyperparameter tuning and model assessment is finite, therefore, the best model among GBM, XGBoost, LightGBM and CatBoost should be able to yield accurate predictions and be as computationally efficient as possible at the same time. Note that in literature only the fit time of the algorithm is considered. In this work, the time needed to make predictions in each cross-validation iteration is also included, because in case of some datasets the prediction time was actually quite high.
+Ideally, a procedure called nested cross validation would be used \cite{sklearn}, because it would give an unbiased assessment of all models' performance. However, due to the fact that hyperparameter tuning would have to be performed ten times instead of once, computational complexity would increase ten-fold. Several days would be needed to complete the computations for all datasets and models. Also, the number of samples in case of several datasets, such as \emph{leukemia} or \emph{prostate} would be too low to reliably perform nested cross validation. On the other hand, the procedure presented in Scheme~\ref{eval_scheme} seems to be a much more reasonable than aforementioned nested cross validation. Estimation of \gbm models will not be completely free of any bias, but if there is any, its magnitude will be the same across every model. 
 
-Additionally, in each cross-validation step additional preprocessing in case of some datasets is performed. Since \emph{IMDB reviews} contains text reviews, they cannot serve as an input to the algorithms, they have to be transformed into numerical features instead. A Bag of Words approach have been used --- TF-IDF transformer \cite{sklearn} with fixed dictionary size equal to 10 thousand have been used. A big sparse matrix is produced, which will allow to test sparsity awareness of each GBM implementation. 
-Note that the TF-IDF transformation used in the case of \emph{IMDB reviews} cannot be applied to preemptively process the whole dataset --- for each cross-validation iteration, the transformer has to be fit on the training part and then used to process both training and test parts, because there might some words present in the test set which are not contained in the train set. Only after the transformer has been used the actual classifier can be fitted and the predictions can be made.
+In addition to the three metrics: accuracy, F1 score and AUC which measure models' predictive ability, two additional metrics related to computational efficiency will be considered, namely the runtime and tuning time. Runtime is the time measured to perform model assessment described in the step 2 in Scheme~\ref{eval_scheme} while details about tuning time are included in the step 3. In any practical use cases the time to perform hyperparameter tuning and model assessment is finite, therefore, the best model among GBM, XGBoost, LightGBM and CatBoost should be able to yield accurate predictions and be as computationally efficient as possible at the same time. Note that in literature only the fit time of the algorithm is considered. In this work, the time needed to make predictions in each cross validation iteration is also included, because in case of some datasets the prediction time was actually quite high.
 
-Moreover, since none of the GBM implementations available in \emph{Python} support categorical splits in regression trees (such as CART, which has been described in \cite{esl}), preprocessing of categorical variables has to be performed in each cross-validation step. A proper encoding method had to be chosen, because it may affect the performance of each of the model --- it has been concluded that each categorical feature will converted to a numerical one using an algorithm which is being used in CatBoost \cite{catboost}. The encoding can be used with any classifier without using CatBoost itself\footnote{Implementation of the encoding can be found in the \emph{category encoders} package:\\\indent \url{contrib.scikit-learn.org/category_encoders/catboost.html}}. Similarly to the TF-IDF transformer, encoding has to be performed in every cross-validation step. Additionally, in this work it has been assumed that preprocessing methods, such as categorical variables encoding or TF-IDF transformation should provide the models with the same exact data in order to retain the validity and consistency of the results. Hence, preprocessing algorithms will not be analyzed further, but they will be considered as integral parts of each of the model in case they are needed (e.g. in case of \emph{IMDB reviews} dataset the time to perform TF-IDF transformation is included in the runtime and tuning time of each algorithm).
+Additionally, in each cross validation step additional preprocessing in case of some datasets is performed. Since \emph{IMDB reviews} contains text reviews, they cannot serve as an input to the algorithms, they have to be transformed into numerical features instead. Firstly, punctuation, parentheses, links and stop words have been removed. Then, all letters have been converted to lower case and lemmatization has been performed. Finally, processed reviews have been passed to one of the transformers used in Bag of Words approach --- TF-IDF transformer \cite{sklearn} with fixed dictionary size equal to 10 thousand have been used. A big sparse matrix is produced, which will allow to test sparsity awareness of each GBM implementation. 
+Note that the TF-IDF transformation used in the case of \emph{IMDB reviews} cannot be applied to preemptively process the whole dataset --- for each cross validation iteration, the transformer has to be fit on the training part and then used to process both training and test parts, because there might some words present in the test set which are not contained in the train set. Only after the transformer has been used the actual classifier can be fitted and the predictions can be made.
 
-The comparative analysis of GBM, XGBoost, LightGBM and CatBoost will be performed in three ways: firstly, models will be evaluated without performing hyperparameter tuning (step 2 in Scheme~\ref{eval_scheme} will be skipped). Then, the procedure will be repeated with the addition of hyperparameter tuning with bayesian optimization using Tree Parzen Estimators. Finally, the tuning will be performed by using randomized search. In case of accuracy, F1 score and AUC the results are in form of lists of ten values saved in the step 4 of Scheme~\ref{eval_scheme}, their distributions will be presented in the form of boxplots.
+Moreover, since none of the GBM implementations available in \emph{Python} support categorical splits in regression trees (such as CART, which has been described in \cite{esl}), preprocessing of categorical variables has to be performed in each cross validation step. A proper encoding method had to be chosen, because it may affect the performance of each of the model --- it has been concluded that each categorical feature will converted to a numerical one using an algorithm which is being used in CatBoost \cite{catboost}. The encoding can be used with any classifier without using CatBoost itself\footnote{Implementation of the encoding can be found in the \emph{category encoders} package:\\\indent \url{contrib.scikit-learn.org/category_encoders/catboost.html}}. Similarly to the TF-IDF transformer, encoding has to be performed in every cross validation step. Additionally, in this work it has been assumed that preprocessing methods, such as categorical variables encoding or TF-IDF transformation should provide the models with the same exact data in order to retain the validity and consistency of the results. Hence, preprocessing algorithms will not be analyzed further, but they will be considered as integral parts of each of the model in case they are needed (e.g. in case of \emph{IMDB reviews} dataset the time to perform TF-IDF transformation is included in the runtime and tuning time of each algorithm).
+
+The comparative analysis of GBM, XGBoost, LightGBM and CatBoost will be performed in three ways: firstly, models will be evaluated without performing hyperparameter tuning (step 2 in Scheme~\ref{eval_scheme} will be skipped). Then, the procedure will be repeated with the addition of hyperparameter tuning with Bayesian optimization using Tree Parzen Estimators. Finally, the tuning will be performed by using randomized search. In case of accuracy, F1 score and AUC the results are in form of lists of ten values saved in the step 4 of Scheme~\ref{eval_scheme}, their distributions will be presented in the form of boxplots.
 
 \subsection{Comparative analysis of baseline models}\label{section:baseline}
 In this section, baseline versions with minor modifications of all four gradient boosting implementations: GBM, XGBoost, LightGBM and CatBoost will be performed:
@@ -310,7 +729,7 @@ In this section, baseline versions with minor modifications of all four gradient
 
 It is crucial to compare performance of models with default hyperparameter configuration, because they can provide the user with robust performance without the need to make research about all possible hyperparameters available (in case of GBM implementations, there are a lot of them). In other words, the ability of the models to perform "right out of the box" will be tested.
 
-It is important to compare the variants of XGBoost, LightGBM and CatBoost which have been emphasized in their respective papers: \cite{xgboost}, \cite{lightgbm}, \cite{catboost}, thus GOSS LightGBM and Ordered CatBoost have been used. Unfortunately, Ordered CatBoost could not be used in the case of \emph{gina agnostic}, \emph{weather} and \emph{IMDB reviews} datasets due to enormous computational complexity. In case of XGBoost \cite{xgboost}, the exact splitting algorithm has been used, since the novel approximate algorithm which uses Weighted Quantile Sketch was surprisingly inefficient.
+It is important to compare the variants of XGBoost, LightGBM and CatBoost which have been recommended in their respective papers: \cite{xgboost}, \cite{lightgbm}, \cite{catboost}, thus GOSS LightGBM and Ordered CatBoost have been used. Unfortunately, Ordered CatBoost could not be used in the case of \emph{gina agnostic}, \emph{weather} and \emph{IMDB reviews} datasets due to enormous computational burden. In case of XGBoost \cite{xgboost}, the exact splitting algorithm has been used, since the novel approximate algorithm which uses Weighted Quantile Sketch turned out to be surprisingly inefficient.
 
 Results in terms of accuracy have been presented in Figure~\ref{fig:no_tuning_accuracy}.
 
@@ -323,7 +742,7 @@ Results in terms of accuracy have been presented in Figure~\ref{fig:no_tuning_ac
 
 Performance of each of the GBM implementation varies a lot when considering different datasets. There is no algorithm which would perform the best across all datasets, however, it can be observed that GBM proposed by Friedman \cite{friedman_gbm} almost always performs the worst (except for \emph{churn} and \emph{credit card fraud} datasets). Baseline versions of XGBoost and CatBoost seem to perform the best in terms of accuracy. 
 
-Distributions presented in each of the boxplots can be characterized by their mean, standard devation or other statistics --- a summary has been presented in Table~\ref{tab:no_tuning_accuracy}.
+The corresponding distributions of  performance measures can be summarized by their mean and standard deviation --- an overview has been presented in Table~\ref{tab:no_tuning_accuracy}.
 
 \begin{table}[h!]
 \centering
@@ -367,7 +786,7 @@ Similar conclusions can be drawn while analyzing classifiers' performance in ter
 	\label{fig:no_tuning_AUC}
 \end{figure}
 
-In Figure~\ref{fig:no_tuning_AUC} an enormous degradation in terms of AUC in case of LightGBM and the \emph{credit card fraud} dataset can be seen almost immediately. While accuracy (Figure~\ref{fig:no_tuning_accuracy}) ranged from 0.994 to around 0.998, AUC can be as low as 0.55 --- this behaviour is concerning. On the other hand, AUC seem to vary a lot less compared to accuracy in case of \emph{leukemia} and \emph{prostate} datasets. Numerical summary of AUC scores have been presented in Table~\ref{tab:no_tuning_AUC}.
+In Figure~\ref{fig:no_tuning_AUC} an enormous degradation in terms of AUC in case of LightGBM and the \emph{credit card fraud} dataset can be seen almost immediately. While accuracy (Figure~\ref{fig:no_tuning_accuracy}) ranged from 0.994 to around 0.998, AUC can be as low as 0.55 --- such behaviour is most likely caused by unusual class distribution (to recall, the positive class constitutes only 0.172\% of all labels). On the other hand, AUC seem to vary a lot less compared to accuracy in case of \emph{leukemia} and \emph{prostate} datasets. Numerical summary of AUC scores have been presented in Table~\ref{tab:no_tuning_AUC}.
 
 \begin{table}[h!]
 \centering
@@ -391,7 +810,7 @@ IMDB reviews & \cellcolor{red}0.862 $\pm$ 0.011 & 0.903 $\pm$ 0.009 & \cellcolor
 \label{tab:no_tuning_AUC}
 \end{table}
 
-Holistically, AUC values across most of the datasets are higher than accuracy. In the case of the \emph{weather} dataset AUC values are higher than accuracy by around 50\%. Also, AUC values seem to have less spread out which is indicated by low values of standard deviations, however one has to keep in mind that AUC and accuracy scores cannot be compared directly. What is really interesting is that CatBoost has managed to achieve perfect AUC score on the \emph{leukemia} dataset. Overall, among baseline versions of GBM, XGBoost, LightGBM and CatBoost both XGBoost and CatBoost seem to perform the best it terms of accuracy, F1 score and AUC while GBM's performance is the worst.
+Holistically, AUC values across most of the datasets are quite high. AUC values seem to have less spread out which is indicated by low values of standard deviations, however one has to keep in mind that AUC and accuracy scores cannot be compared directly. What is really interesting is that CatBoost has managed to achieve perfect AUC score on the \emph{leukemia} dataset. Overall, among baseline versions of GBM, XGBoost, LightGBM and CatBoost both XGBoost and CatBoost seem to perform the best it terms of accuracy, F1 score and AUC while GBM's performance is the worst.
 
 On the other hand, accuracy, F1 score and AUC are not the only criteria which are used in this comparative analysis, the runtimes of the algorithms are also crucial --- in case of non-tuned models, times needed to perform model evaluation have been presented in Figure~\ref{fig:no_tuning_runtimes}.
 
@@ -402,15 +821,15 @@ On the other hand, accuracy, F1 score and AUC are not the only criteria which ar
 	\label{fig:no_tuning_runtimes}
 \end{figure}
 
-Overall, the runtimes between models tend to vary a lot less than values of accuracy, F1 score or AUC. However, the models with the best evaluation metrics, namely XGBoost and CatBoost tend to be slower than GBM and much slower than LightGBM. In the case of the first six datasets presented in Table~\ref{tab:datasets}: \emph{adult study}, \emph{heart disease}, \emph{amazon}, \emph{mushrooms}, \emph{breast cancer} and \emph{churn} XGBoost is clearly the slowest. Aforementioned datasets vary greatly in the number of samples (\emph{adult study} has 48842 while \emph{heart disease} contains information about 303 instances), so the length of the datasets clearly had no impact on XGBoost's performance. Additionally, they contain a reasonable number of features (30 at most), so the exact splitting algorithm implemented in XGBoost should still work quite efficiently (even in the case of very highly dimensional data, namely \emph{prostate} and \emph{leukemia} it did well). Thus, the reason behind enormous runtimes of XGBoost on first six datasets presented in Table~\ref{tab:datasets} cannot be pointed out. 
+Overall, the runtimes between models tend to vary a lot less than values of accuracy, F1 score or AUC. However, the models with the best evaluation metrics, namely XGBoost and CatBoost tend to be slower than GBM and much slower than LightGBM. In the case of the first six datasets presented in Table~\ref{tab:datasets}: \emph{adult study}, \emph{heart disease}, \emph{amazon}, \emph{mushrooms}, \emph{breast cancer} and \emph{churn} XGBoost is clearly the slowest. Aforementioned datasets vary greatly in the number of samples (\emph{adult study} has 48842 while \emph{heart disease} contains information about 303 instances), so the length of the datasets clearly had no impact on XGBoost's performance. Additionally, they contain a reasonable number of features (30 at most), so the exact splitting algorithm implemented in XGBoost should still work quite efficiently (even in the case of very highly dimensional data, namely \emph{prostate} and \emph{leukemia} it did well). Thus, the reason behind enormous runtimes of XGBoost on first six datasets presented in Table~\ref{tab:datasets} cannot be uniquely identified. 
 
-On the other hand, except for one case (\emph{credit card fraud}) GBM tends to perform rather quickly depsite not being computationally optimized like state-of-the-art implementations. LightGBM is consistently the fastest algorithm across all datasets --- histogram-based splitting algorithm, GOSS, EFB and leaf-wise tree growth all greatly contribute to the greatly decreased runtime. Sometimes, LightGBM is faster than other GBM implementations even by up to two orders of magnitude. It scales very well with high number of samples and very high number of features. 
+On the other hand, except for one case (\emph{credit card fraud}) GBM tends to perform rather quickly depsite not being computationally optimized like state-of-the-art implementations. LightGBM is consistently the fastest algorithm across all datasets --- histogram-based splitting algorithm, GOSS, EFB and leaf-wise tree growth all contribute to the greatly decreased runtime. Sometimes, LightGBM is faster than other GBM implementations even by up to two orders of magnitude. It scales very well with high number of samples and very high number of features. 
 
-CatBoost's greatest strength lies in datasets with low to moderate number of features (an area where XGBoost surprisingly struggles). Great performance in terms of accuracy, F1 score and AUC can be achieved in a very competitive and reasonable amount of time (even despite using Ordered algorithm which is slower than the Plain one). CatBoost scales well with the number of instances, however, it completely cannot handle highly dimensional data. Plain version is much slower than other GBM implementations in case of \emph{prostate} and \emph{leukemia} datasets. In case of \emph{gina agnostic} dataset, it is slightly slower than GBM and noticeably faster than XGBoost. In the case of \emph{weather} dataset, Plain CatBoost is almost as slow as XGBoost and CatBoost. Excessive runtimes of CatBoost are surprising, because by default, the value of $\lambda$ responsible for L2 regularization is equal to 3 (to recall, $\lambda=1$ and $\lambda=0$ for XGBoost and LightGBM, respectively).
+CatBoost's greatest strength lies in datasets with low to moderate number of features (in the case of such datasets XGBoost is surprisingly slow). Great performance in terms of accuracy, F1 score and AUC can be achieved in a very competitive and reasonable amount of time (even despite using Ordered algorithm which is slower than the Plain one). CatBoost scales well with the number of instances, however, it completely cannot handle highly dimensional data (no matter how many training samples are present). Plain version is much slower than other GBM implementations in case of \emph{prostate} and \emph{leukemia} datasets. In case of \emph{gina agnostic} dataset, it is slightly slower than GBM and noticeably faster than XGBoost. In the case of \emph{weather} dataset, Plain CatBoost is almost as slow as XGBoost and CatBoost. Excessive runtimes of CatBoost are surprising, because by default, the value of $\lambda$ responsible for L2 regularization is equal to 3 (to recall, $\lambda=1$ and $\lambda=0$ for XGBoost and LightGBM, respectively).
 
 It has been observed that both Ordered and Plain CatBoost struggle with memory consumption when being used with highly dimensional datasets. Originally, the \emph{weather} dataset contained 4800 features, but Plain CatBoost could not handle that amount of data --- over 17GB of RAM was used, which is quite inefficient (other GBM implementations consumed less than 6GB of RAM). Thus, the size of \emph{weather} dataset had to be reduced to 2500. Such computational infeasibility of CatBoost in unacceptable, especially that it cannot be used with highly dimensional datasets on reasonably new personal computers or laptops (most of them will have up to 16GB of RAM memory). 
 
-Friedman test with Nemenyi Post Hoc Analysis has been performed to rank the performance of non-tuned versions of \gbm across twelve datasets described in Table~\ref{tab:datasets}. The results in form of a heatmap have been presented in Figure~\ref{fig:no_tuning_accuracy_heatmap}. In each cell two values are displayed: the one in the upper left corner denotes the rank of the model on the left hand side of the side while the other one points at the rank of the model at the bottom.
+Friedman test with Nemenyi Post Hoc Analysis has been performed to rank the performance of non-tuned versions of \gbm across twelve datasets described in Table~\ref{tab:datasets}. The results in form of a heatmap have been presented in Figure~\ref{fig:no_tuning_accuracy_heatmap}. In each cell two values are displayed: the one in the upper left corner denotes the rank of the model on the left hand side of the heatmap while the other one points at the rank of the model at the bottom.
 
 \begin{figure}[H]
 	\centering
@@ -428,24 +847,17 @@ The ranking could indicate that XGBoost is the most accurate baseline model. Cat
 	\label{fig:no_tuning_F1_heatmap}
 \end{figure}
 
-In case of F1 score the different of performance between GBM and XGBoost is bigger; it is also statistically significant. A similar observation can be made in case of AUC score. Final ranking of baseline variants of \gbm in terms of F1 score is as follows:
+In case of F1 score the difference in performance between GBM and XGBoost is bigger; it is also statistically significant. A similar observation can be made in case of AUC score. 
 
-\begin{enumerate}
-    \item XGBoost with rank 3.17
-    \item CatBoost with rank 2.92
-    \item LightGBM with rank 2.17
-    \item GBM with rank 1.75
-\end{enumerate}
+\subsection{Analysis of models tuned with Bayesian optimization}\label{section_tpe}
+In this section, comparative analysis of \gbm models tuned using Tree Parzen Estimators have been carried out. The procedure which has been used for selection of optimal hyperparameters and evaluation of models have been described in Scheme~\ref{eval_scheme}. Due to the sequential nature of Bayesian optimization, the number of tuning iterations for each of the gradient boosting implementation has been set to 15 (by default, only 10 iterations are performed). 
 
-\subsection{Analysis of models tuned with bayesian optimization}\label{section_tpe}
-In this section, comparative analysis of \gbm models tuned using Tree Parzen Estimators have been carried out. The procedure which has been used for selection of optimal hyperparameters and evaluation of models have been described in Scheme~\ref{eval_scheme}. Due to the sequential nature of bayesian optimization, the number of tuning iterations for each of the gradient boosting implementation has been set to 15 (by default, only 10 iterations are performed). 
-
-One of the aims of model selection in form of hyperparameter tuning is to find models with the best performance possible. Thus, it is absolutely essential to define a set of initial hyperparameters (further referred as \emph{init}) and a search space which will be used in the tuning. To preserve consistency with the experiment described in Section\ref{section:baseline}, the number of trees and \emph{boosting\_type} in case of LightGBM and CatBoost remain unchanged. Following the advice given in \cite{comparative_analysis} and in \cite{friedman_gbm}, the number of trees has been fixed to the highest computationally feasible value (to recall, it is equal to 150 except for \emph{gina agnostic}, \emph{weather} and \emph{IMDB reviews} datasets where it has been set to 50) and consequently \emph{learning\_rate} will be one of the tuned hyperparameters.
+One of the aims of model selection in form of hyperparameter tuning is to find models with the best performance possible. Thus, it is absolutely essential to define a set of initial hyperparameters (further referred as \emph{init}) and a search space which will be used in the tuning. To preserve consistency with the experiment described in Section~\ref{section:baseline}, the number of trees and \emph{boosting\_type} in case of LightGBM and CatBoost remain unchanged. Following the advice given in \cite{comparative_analysis} and in \cite{friedman_gbm}, the number of trees has been fixed to the highest computationally feasible value (to recall, it is equal to 150 except for \emph{gina agnostic}, \emph{weather} and \emph{IMDB reviews} datasets where it has been set to 50) and consequently \emph{learning\_rate} will be one of the tuned hyperparameters.
 
 In case of other hyperparameters used in \emph{init} and tuning, an extensive study of each of the GBM implementations' documentation has been carried out. Documentations greatly vary in lengths: gradient boosting\footnote{\url{scikit-learn.org/stable/modules/generated/sklearn.ensemble.GradientBoostingClassifier}} has the shortest one, followed by CatBoost\footnote{\url{catboost.ai/en/docs/references/training-parameters/}}; XGBoost\footnote{\url{xgboost.readthedocs.io/en/stable/parameter.html}} and LightGBM\footnote{\url{lightgbm.readthedocs.io/en/latest/Parameters.html}} in particular provide the most exhaustive documentations, because their implementations \cite{xgboost}, \cite{lightgbm} contain the biggest number of available hyperparameters. Additionally, Friedman's advice regarding stochastic gradient boosting \cite{friedman_stoch} has been considered, as well as the choice of hyperparameters and search spaces which were described in \cite{catboost}, \cite{comparative_analysis} and \cite{competitive_analysis}. The conclusions from the studied documentations and literature suggest the following:
 \begin{enumerate}
     \item As it has been stated before, the number of trees has been fixed, but \emph{learning\_rate} is tuned
-    \item In conjunction with the advice given in \cite{friedman_stoch} and \cite{comparative_analysis}, instances and features subsampling have been set to fixed values; it is not worth to tune them
+    \item In conjunction with the advice given in \cite{friedman_stoch} and \cite{comparative_analysis}, instances and features subsampling have been set to fixed values; it is not worth to tune them. Also, \emph{subsample} cannot be used in case of LightGBM since GOSS mode is used
     \item In \cite{catboost}, \cite{comparative_analysis} and \cite{competitive_analysis} the maximum depth of a tree (or number of leaves in case of LightGBM), L1 and L2 regularization were common hyperparameters which were tuned, so in this work they will also be a part of the search spaces
     \item Also, algorithm-specific hyperparameters are a common choice during the process of model selection, thus they will also be considered. These include: XGBoost's \emph{gamma}, LightGBM's \emph{top\_rate} and \emph{other\_rate} and CatBoost's \emph{leaf\_estimation\_iterations}. 
 \end{enumerate}
@@ -468,22 +880,22 @@ The summary of initial hyperparametrization as well as search spaces has been pr
 \multicolumn{1}{|c|}{\begin{tabular}[c]{@{}c@{}}adult study\\ amazon\\ mushrooms\\ churn\\ credit card fraud\end{tabular}} &
   \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}n\_estimators: 150\\ subsample: 0.75\\ max\_features: 0.6\end{tabular}} &
   \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}n\_estimators: 150\\ subsample: 0.75\\ colsample\_bynode: 0.6\end{tabular}} &
-  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}boosting\_type: "goss"\\ n\_estimators: 150\\ subsample: 0.75\\ colsample\_bynode: 0.6\end{tabular}} &
+  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}boosting\_type: "goss"\\ n\_estimators: 150\\ colsample\_bynode: 0.6\end{tabular}} &
   \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}boosting\_type: "Ordered"\\ n\_estimators: 150\\ subsample: 0.75\\ colsample\_bylevel: 0.6\end{tabular}} \\ \hline
 \multicolumn{1}{|c|}{\begin{tabular}[c]{@{}c@{}}heart disease\\ breast cancer\end{tabular}} &
   \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}Same as above,\\  but with subsample = 1\end{tabular}} &
   \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}Same as above,\\  but with subsample = 1\end{tabular}} &
-  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}Same as above,\\  but with subsample = 1\end{tabular}} &
+  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}Same as above\end{tabular}} &
   \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}Same as above,\\  but with subsample = 1\end{tabular}} \\ \hline
 \multicolumn{1}{|c|}{\begin{tabular}[c]{@{}c@{}}prostate\\ leukemia\end{tabular}} &
   \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}n\_estimators: 150\\ subsample: 1\\ max\_features: 0.4\end{tabular}} &
   \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}n\_estimators: 150\\ subsample: 1\\ colsample\_bynode: 0.4\end{tabular}} &
-  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}boosting\_type: "goss"\\ n\_estimators: 150\\ subsample: 1\\ colsample\_bynode: 0.4\end{tabular}} &
+  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}boosting\_type: "goss"\\ n\_estimators: 150\\ colsample\_bynode: 0.4\end{tabular}} &
   \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}boosting\_type: "Plain"\\ n\_estimators: 150\\ subsample: 1\\ colsample\_bylevel: 0.4\end{tabular}} \\ \hline
 \multicolumn{1}{|c|}{\begin{tabular}[c]{@{}c@{}}gina agnostic\\ weather\\ IMDB reviews\end{tabular}} &
   \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}n\_estimators: 50\\ subsample: 0.5\\ max\_features: 0.4\end{tabular}} &
   \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}n\_estimators: 50\\ subsample: 0.5\\ colsample\_bynode: 0.4\end{tabular}} &
-  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}boosting\_type: "goss"\\ n\_estimators: 50\\ subsample: 0.5\\ colsample\_bynode: 0.4\end{tabular}} &
+  \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}boosting\_type: "goss"\\ n\_estimators: 50\\ colsample\_bynode: 0.4\end{tabular}} &
   \multicolumn{1}{c|}{\begin{tabular}[c]{@{}c@{}}boosting\_type: "Plain"\\ n\_estimators: 50\\ subsample: 0.5\\ colsample\_bylevel: 0.4\end{tabular}} \\ \hline
  &
    &
@@ -531,7 +943,7 @@ Results in terms of accuracy have been presented in Figure~\ref{fig:tpe_accuracy
 	\label{fig:tpe_accuracy}
 \end{figure}
 
-Immediately, a vast improvement of gradient boosting and LightGBM can be noticed. Both of the models benefited greatly from hyperparameter tuning and right now all four models: \gbm perform very similarly. Moreover, big increase in LightGBM can be observed; corresponding red boxes are much shorter --- it is possible that the addition of regularization has contributed to lesser spread of accuracy values. A visual judgment would suggest that among tuned models, LightGBM performs the best. XGBoost is also quite robust, but CatBoost seems to have degraded in performance --- even the original GBM proposed by Friedman in 1999 \cite{friedman_gbm} seem to holistically outperform it. The means and standard deviations of accuracy distributions for each model and dataset have been presented in Table~\ref{tab:tpe_accuracy}.
+Immediately, a vast improvement of gradient boosting and LightGBM can be noticed. Both of the models benefited greatly from hyperparameter tuning and right now all four models: \gbm perform very similarly. Moreover, an increase in LightGBM's performance can be observed; corresponding red boxes are much shorter --- it is possible that the addition of regularization has contributed to smaller of accuracy values. A visual judgment would suggest that among tuned models, LightGBM performs the best. XGBoost is also quite robust, but CatBoost seems to have degraded in performance --- even the original GBM proposed by Friedman in 1999 \cite{friedman_gbm} seems to uniformly outperform it. The means and standard deviations of accuracy distributions for each model and dataset have been presented in Table~\ref{tab:tpe_accuracy}. 
 
 \begin{table}[h!]
 \centering
@@ -564,7 +976,7 @@ The results in case of AUC have been presented in Figure~\ref{fig:tpe_AUC}.
 	\label{fig:tpe_AUC}
 \end{figure}
 
-In terms of accuracy, LightGBM seems to be the most consistent, in case of some datasets it performs the best and it is the worst only on the \emph{prostate} dataset (since LightGBM is tied with XGBoost when considering the means, its accuracy has higher standard deviation). Numerical results confirm that GBM and CatBoost perform very similarly. 
+In terms of accuracy, LightGBM seems to be the most consistent, in case of some datasets it performs the best and it is the worst only on the \emph{prostate} dataset (mean accuracy scores for LightGBM and XGBoost are equal, but LightGBM's accuracy has higher standard deviation). Numerical results confirm that GBM and CatBoost perform very similarly. Identical observations can be made in the case of F1 score.
 Results for means and standard deviations of AUC have been presented in Table~\ref{tab:tpe_AUC}.
 
 \begin{table}[h!]
@@ -589,9 +1001,9 @@ IMDB reviews & 0.898 $\pm$ 0.012 & 0.9 $\pm$ 0.009 & \cellcolor{green}0.908 $\pm
 \label{tab:tpe_AUC}
 \end{table}
 
-LightGBM is clearly the best when considering AUC scores. The means for each dataset are often the highest and standard deviations are the lowest. Tuned versions of \gbm tend to perform very similarly on the datasets with low to medium number of features, however, some differenced can be observed on highly dimensional datasets. CatBoost's performance there is quite worrying, on the other hand LightGBM handles sparse data (\emph{gina agnostic} and \emph{IMDB reviews} datasets) the best (most likely due to the sparsity-aware splitting algorithm alongside with Exclusive Feature Bundling).
+LightGBM is clearly the best when considering AUC scores. The average accuracies for each dataset are often the highest and standard deviations are the lowest. Tuned versions of \gbm tend to perform very similarly on the datasets with low to medium number of features, however, some differenced can be observed on highly dimensional datasets. CatBoost's performance there is quite worrying, on the other hand LightGBM handles sparse data (\emph{gina agnostic} and \emph{IMDB reviews} datasets) the best (most likely due to the sparsity-aware splitting algorithm alongside with Exclusive Feature Bundling).
 
-Overall, it can be concluded that hyperparameter tuning using bayesian optimization has leveled out the performances of each of the gradient boosting implementation. However, it is not certain whether if tuned models are actually better than the baseline ones presented in Section~\ref{section:baseline}. The differences of accuracy and AUC scores between the tuned and non-tuned variants of \gbm have been presented in  Tablex~\ref{tab:no_tuning_tpe_accuracy_diff} and ~\ref{tab:no_tuning_tpe_AUC_diff}, respectively.
+Overall, it can be concluded that hyperparameter tuning using Bayesian optimization has leveled out the performances of each of the gradient boosting implementation. However, it is not certain whether if tuned models are actually better than the baseline ones presented in Section~\ref{section:baseline}. The differences of accuracy and AUC scores between the tuned and non-tuned variants of \gbm have been presented in  Table~\ref{tab:no_tuning_tpe_accuracy_diff} and ~\ref{tab:no_tuning_tpe_AUC_diff}, respectively.
 
    \begin{sidewaystable}
      \centering
@@ -652,8 +1064,7 @@ IMDB reviews & +4.211\% & +9.168\% & -0.315\% & -0.261\% & +0.084\% & -7.264\% &
 \label{tab:no_tuning_tpe_AUC_diff}
    \end{sidewaystable}
    
-When looking at the change of mean values of accuracy and AUC one can notice that tuning
-It can be noticed that TPE tuning has increased the performance of \gbm in terms of the mean values. The absolute value of the means in case of accuracy and AUC usually does not exceed 10\%. The most negative change of mean has been observed in the case of CatBoost's accuracy on the \emph{IMDB reviews} dataset --- TPE tuning has decreased the performance of the model by around 8.4\%. On the other hand, the biggest gain has been recorded in case of LightGBM. Mean AUC on the \emph{credit card fraud} dataset has increased by almost 24\%. On the other hand, standard deviations changed much more drastically, either positively or negatively. After TPE tuning, the standard deviations have to be considered on case-by-case basis, one model and one dataset at a time. Similar conclusions can be drawn by considering F1 score instead of accuracy or AUC.
+When looking at the change of mean values of accuracy and AUC one can notice that TPE tuning has increased the performance of \gbm in terms of the mean values. The absolute value of the means in case of accuracy and AUC usually does not exceed 10\%. The most negative change of mean has been observed in the case of CatBoost's accuracy on the \emph{IMDB reviews} dataset --- TPE tuning has decreased the performance of the model by around 8.4\%. On the other hand, the biggest gain has been recorded in case of LightGBM. Mean AUC on the \emph{credit card fraud} dataset has increased by almost 24\%. On the other hand, standard deviations changed much more drastically, either positively or negatively. After TPE tuning, the standard deviations have to be considered on case-by-case basis, one model and one dataset at a time. Similar conclusions can be drawn by considering F1 score instead of accuracy or AUC.
 
 Bayesian optimization in itself is quite slow due to its sequential nature --- tuning times of the algorithms have been presented in Figure~\ref{fig:tpe_tuning_times}.
 
@@ -664,7 +1075,7 @@ Bayesian optimization in itself is quite slow due to its sequential nature --- t
 	\label{fig:tpe_tuning_times}
 \end{figure}
 
-Additional time to perform model selection is quite long --- in the case of datasets with a reasonable number of features it can be stated that the time consumed to perform hyperparameter tuning is worth the slight increase of models' performance in terms of accuracy, F1 score and AUC. The situation is different on highly dimensional datasets, especially in case of CatBoost which is very inefficient (also for some reason it does not handle the \emph{breast cancer} dataset which is strange). Two or three our long hyperparameter tuning in case of CatBoost is not worth the time spent, especially that in the case of the \emph{IMDB reviews} dataset the tuning was actually detrimental. On the other hand, GBM seems to be quite fast, XGBoost is slightly less consistent. The algorithm which benefited the most from the tuning is also the most efficient --- LightGBM is lightning fast. The difference of the tuning times compared to other models is enormous --- the tuning times are often lower by one or two orders of magnitude. The difference is the biggest in the case of the \emph{breast cancer} dataset; LightGBM is over 100 times faster (in other words, one could perform TPE tuning over the span of 1500 iterations instead of 15 and there is a high chance that LightGBM would still complete the tuning process faster than CatBoost). It can be stated that LightGBM is the GBM implementation of choice for performing hyperparameter tuning due to a significant increase in performance as well as enormous scalability and efficiency.
+Additional time to perform model selection is quite long --- in the case of datasets with a reasonable number of features it can be stated that the time consumed to perform hyperparameter tuning is worth the slight increase of models' performance in terms of accuracy, F1 score and AUC. The situation is different on highly dimensional datasets, especially in case of CatBoost which is very inefficient (also, surprisingly it is highly inefficient for \emph{breast cancer} dataset). Two or three hour long hyperparameter tuning in case of CatBoost is not worth the time spent, especially that in the case of the \emph{IMDB reviews} dataset the tuning was actually counterproductive. On the other hand, GBM seems to be quite fast, XGBoost is slightly less consistent. The algorithm which benefited the most from the tuning is also the most efficient --- LightGBM is lightning fast. The difference of the tuning times compared to other models is enormous --- the tuning times are often lower by one or two orders of magnitude. The difference is the biggest in the case of the \emph{breast cancer} dataset; LightGBM is over 100 times faster (in other words, one could perform TPE tuning over the span of 1500 iterations instead of 15 and there is a high chance that LightGBM would still complete the tuning process faster than CatBoost). It can be stated that LightGBM is the GBM implementation of choice for performing hyperparameter tuning due to a significant increase in performance as well as enormous scalability and efficiency.
 
 The runtimes of the models selected in the hyperparameter tuning have been presented in Figure~\ref{fig:tpe_runtimes}.
 
@@ -699,15 +1110,15 @@ Finally, it was essential to use the Friedman test with Nemenyi Post Hoc Analysi
 
 Friedman test with Nemenyi Post Hoc Analysis implies that there is only one case where the pairwise comparison of rankings of two models is statistically significant --- the performance of tuned LightGBM is statistically different (in this case better) than the performance of baseline GBM. A similar pattern can be observed in the case of rankings obtained for accuracy and F1 score, but in those cases the p-value of the Nemenyi test was higher ($p<0.05$, was $p<0.01$ in case of AUC). In case of all three aforementioned evaluation metrics, the rankings all quite similar --- tuned LightGBM is the best by a big margin in the rank, then models such as XGBoost, tuned XGBoost, CatBoost and tuned CatBoost and tuned GBM can be considered as the next best models (although not always in that particular order), however, the difference in their ranks is quite small. Lastly, two worst algorithms are LightGBM and GBM which is not surprising.   
 
-\subsection{Comparison between randomized search, bayesian optimization and no tuning}\label{section_rand}
-In Sections~\ref{section:baseline} and \ref{section_tpe} comparative analysis of baseline and tuned variants of \gbm has been conducted. The method of choice for hyperparameter tuning was bayesian optimization using Tree Parzen Estimators. In this section, a different method used for model selection will be analyzed, namely the randomized search. Bayesian optimization has proven to be effective, but quite time consuming and computationally demanding, thus it is reasonable to check if simpler methods, such as aforementioned randomized search can be a better alternative. 
+\subsection{Comparison between randomized search, Bayesian optimization and no tuning}\label{section_rand}
+In Sections~\ref{section:baseline} and \ref{section_tpe} comparative analysis of baseline and tuned variants of \gbm has been conducted. The method of choice for hyperparameter tuning was Bayesian optimization using Tree Parzen Estimators. In this section, a different method used for model selection will be analyzed, namely the randomized search. Bayesian optimization has proven to be effective, but quite time consuming and computationally demanding, thus it is reasonable to check if simpler methods, such as aforementioned randomized search can be a better alternative. 
 
-Each iteration of randomized search is independent from each other one, so the tuning procedure can parallelized --- thus, it is expected that 15 iterations of randomized search will take less time than tuning using Tree Parzen Estimators. Therefore, the number of iterations has been set to 30 --- the differences of tuning times between two aforementioned model selection methods have been presented in Figure~\ref{fig:diffs}.
+Each iteration of randomized search is independent from each other one, so the tuning procedure can be parallelized --- thus, it is expected that 15 iterations of randomized search will take less time than tuning using Tree Parzen Estimators. Therefore, the number of iterations has been set to 30 --- the differences of tuning times between two aforementioned model selection methods have been presented in Figure~\ref{fig:diffs}.
 
 \begin{figure}[H]
 	\centering
 		\scalebox{0.42}{\includegraphics{main/plots/diffs_barplots.pdf}}
-	\caption{Differences between tuning times using randomized search and bayesian optimization}
+	\caption{Differences between tuning times using randomized search and Bayesian optimization}
 	\label{fig:diffs}
 \end{figure}
 
@@ -716,12 +1127,12 @@ On most of the datasets, randomized search took longer time than TPE tuning. In 
 It is essential to compare the performance of both types of hyperparameter tuning and the case where there was no tuning performed. The comparison has been performed for each GBM implementation: \gbm and each evaluation metric: accuracy, F1 score and AUC in the following scenarios:
 
 \begin{enumerate}
-    \item no tuning vs bayesian optimization using TPE
+    \item no tuning vs Bayesian optimization using TPE
     \item no tuning vs randomized search
-    \item bayesian optimization vs randomized search
+    \item Bayesian optimization vs randomized search
 \end{enumerate}
 
-All pairwise tests have been performed using the Wilcoxon Signed Rank Test with one-sided alternative hypothesis. The results have been compiled in Table~\ref{tab:no_tuning_tpe_rand}.
+All pairwise tests have been performed using the Wilcoxon signed-ranks Test with one-sided alternative hypothesis. The results have been compiled in Table~\ref{tab:no_tuning_tpe_rand}.
 
 \begin{table}[h!]
 \centering
@@ -747,9 +1158,9 @@ CatBoost       & F1 score & $p > 0.05$                      & $p > 0.05$        
 
 In case of GBM and LightGBM it is always more optimal to perform either TPE tuning or randomized search rather than not. On the other hand, in case of XGBoost and CatBoost no significant differences of performing hyperparameter tuning have been found --- it may imply that XGBoost and CatBoost do not have to be tuned at all.
 
-The comparison between bayesian optimization (15 iterations) and randomized search (30 iterations) is interesting --- the latter has proven to be better than the former when evaluating XGBoost using the F1 score. LightGBM tends to benefit from the randomized search; the usual longer tuning time compared to bayesian optimization is worth it. It may be beneficial to pair TPE tuning with GBM, XGBoost or CatBoost.
+The comparison between Bayesian optimization (15 iterations) and randomized search (30 iterations) is interesting --- the latter has proven to be better than the former when evaluating XGBoost using the F1 score. LightGBM tends to benefit from the randomized search; the usual longer tuning time compared to Bayesian optimization is worth it. It may be beneficial to pair TPE tuning with GBM, XGBoost or CatBoost.
 
-Moreover, randomized search with 15 iterations has been tested. Overall, it is much faster than bayesian optimization, but has not proven to be better while using LightGBM.
+Moreover, randomized search with 15 iterations has been tested. Overall, it is much faster than Bayesian optimization, but has not proven to be better while using LightGBM.
 
 The final rankings of the models in terms of choice of hyperparameter tuning method and evaluation metric has been presented in Figure~\ref{tab:all_tunings_rankings}. 
 
@@ -818,24 +1229,24 @@ The final rankings of the models in terms of choice of hyperparameter tuning met
 
 Additionally, p-values of the Nemenyi test indicate that LightGBM tuned using randomized search is better than baseline GBM. The same is true for LightGBM tuned using TPE tuning in case of AUC score (critical difference was equal to 4.81).
 
-\section{Choice of regularization hyperparametrization}
+\section{Choice of regularization hyperparametrization}\label{section:xgboost_regularization}
 In GBM implementations, different hyperparameters which control regularization have been implemented. Proper regularization can greatly diminish the risk of overfitting, however, poor usage can lead to underfitting. Simultaneous usage of multiple regularization hyperparameters might not be optimal. Therefore, it is reasonable to check if it is necessary to use all of these hyperparameters at once. 
 
 XGBoost has been chosen to be used in the regularization analysis since it provides four hyperparameters related to regularization; the choice is the biggest among all four considered GBM implementations: \gbm. In the analysis, three will be considered:
 \begin{itemize}
 \item $\alpha$, which is responsible for L1 regularization
 \item $\lambda$, which controls regularization in L2
-\item $\gamma$ or minimum.
+\item $\gamma$ or minimum loss reduction required to make a split.
 \end{itemize}
 
 Shrinkage $\nu$ also controls regularization, but it is an integral part of every possible gradient boosting implementation, thus it will not be considered.
 
-In order to determine the proper choice of regularization hyperparametrization, a train test split have been performed on two datasets: \emph{prostate} and \emph{gina agnostic}. All three aforementioned datasets can be challenging to analyze without feature selection, because the number of features is high. Then, for different combinations of $\alpha$, $\lambda$ and $\gamma$, XGBoost have been fit on the train set and then accuracy on the test set has been computed. The results for the \emph{prostate} dataset have been presented in form of a heatmap in Figure~\ref{fig:regularization_prostate}.
+In order to determine the proper choice of regularization hyperparametrization, a train test split have been performed on two datasets: \emph{prostate} and \emph{gina agnostic} --- they have been chosen because the high number of features suggests that some feature engineering will be needed in order for the model to perform optimally and not overfit. Both aforementioned datasets can be challenging to analyze without feature selection, because the number of features is high. Then, for different combinations of $\alpha$, $\lambda$ and $\gamma$, XGBoost have been fit on the train set and then accuracy on the test set has been computed. Hyperparameters other than $\alpha$, $\lambda$ and $\gamma$ have been set to their respectibe default values. The results for the \emph{prostate} dataset have been presented in form of a heatmap in Figure~\ref{fig:regularization_prostate}.
 
 \begin{figure}[H]
 	\centering
 		\scalebox{0.55}{\includegraphics{main/plots/regularization_05_step_prostate.pdf}}
-	\caption{XGBoost's accuracy on the train set --- \emph{prostate} dataset}
+	\caption{XGBoost's accuracy on the test set --- \emph{prostate} dataset}
 	\label{fig:regularization_prostate}
 \end{figure}
 
@@ -846,7 +1257,7 @@ Greater saturation of the color indicates higher accuracy on the test set. It ca
     \item by fixing high $\lambda=5$ and picking low $\alpha$ and $\lambda$
 \end{itemize}
 
-By taking high $\alpha$, $\lambda$ and $\gamma$ at the same time the performance of XGBoost can be degraded, each heatmap in the third column of the plot presented in Figure~\ref{fig:regularization_prostate} indicates that picking $\alpha=\lambda=\gamma=5$ is detrimental. on the other hand, for $\gamma=5$ one could take $\alpha$ and $\lambda$ slightly lower than 5 and still get satisfying results. Similarly, high accuracy can be achieved by fixing $\alpha=5$ and taking higher values of $\lambda$ and $\gamma$.
+By taking high $\alpha$, $\lambda$ and $\gamma$ at the same time the performance of XGBoost can be degraded, each heatmap in the third column of the plot presented in Figure~\ref{fig:regularization_prostate} indicates that picking $\alpha=\lambda=\gamma=5$ is counterproductive. on the other hand, for $\gamma=5$ one could take $\alpha$ and $\lambda$ slightly lower than 5 and still get satisfying results. Similarly, high accuracy can be achieved by fixing $\alpha=5$ and taking higher values of $\lambda$ and $\gamma$.
 
 In the case of the \emph{prostate} dataset, choosing only one hyperparameter among $\alpha$, $\lambda$ and $\gamma$ to have higher value might lead to a very decent generalization error. It is counter-intuitive, because the \emph{prostate} dataset has 6033 features, so it is reasonable to think that it would be difficult to achieve a good generalization error without choosing multiple regularization hyperparameters at once. 
 
@@ -855,16 +1266,16 @@ The aforementioned dataset's feature matrix is dense, thus the analysis has been
 \begin{figure}[H]
 	\centering
 		\scalebox{0.55}{\includegraphics{main/plots/regularization_05_step_gina_agnostic.pdf}}
-	\caption{XGBoost's accuracy on the train set --- \emph{gina agnostic} dataset}
+	\caption{XGBoost's accuracy on the test set --- \emph{gina agnostic} dataset}
 	\label{fig:regularization_gina_agnostic}
 \end{figure}
 
 The results in case of a sparse dataset are quite different compared to those obtained in case of the \emph{prostate} dataset. For each heatmap, accuracy tend to increase when at least two regularization hyperparameters are also increasing, however, taking $\alpha=\lambda=\gamma=5$ will lead to a significant degradation in performance. Low regularization is not worth it, at least two hyperparameters among $\alpha$, $\lambda$ and $\gamma$ should be considered to obtain a satisfying generalization error. 
 
-In conclusion, regularization in GBM implementations can be tuned by adjusting the values of several hyperparameters. However, judging from the results presented in Figures~\ref{fig:regularization_prostate} and \ref{fig:regularization_gina_agnostic} regularization has to be considered on case-by-case basis. L1, L2 and $\gamma$ regularization may be more or less useful on different kinds of datasets. It is reasonable to perform hyperparameter tuning which will determine the optimal combination of regularization hyperparameters. When tuning is not computationally feasible, one should limit their choice to up to two aforememtioned hyperparameters.
+In conclusion, regularization in GBM implementations can be tuned by adjusting the values of several hyperparameters. However, judging from the results presented in Figures~\ref{fig:regularization_prostate} and \ref{fig:regularization_gina_agnostic} regularization has to be considered on case-by-case basis. L1, L2 and $\gamma$ regularization may be more or less useful on different kinds of datasets. It is reasonable to perform hyperparameter tuning which will determine the optimal combination of regularization hyperparameters. When tuning is not computationally feasible, one should limit their choice to up to two aforememtioned hyperparameters. However, since datasets possess different characteristics, the optimal choice of regularization hyperparameters should be researched separately in each use case.
 
-\section{Impact of hyperparameter tuning on LightGBM}
-In Sections~\ref{section:baseline}, \ref{section_tpe} and \ref{section_rand} it has been proven that LightGBM which has been used using either bayesian optimization with Tree Parzen Estimators or randomized search performs the best out of any tuned or not tuned GBM implementation. Therefore, it is reasonable to investigate the impact of different hyperparameters on LightGBM's performance. 
+\section{Impact of hyperparameter tuning on LightGBM}\label{section:lightgbm_tuning}
+In Sections~\ref{section:baseline}, \ref{section_tpe} and \ref{section_rand} it has been proven that LightGBM which has been used using either Bayesian optimization with Tree Parzen Estimators or randomized search performs the best out of any tuned or not tuned GBM implementation. Therefore, it is reasonable to investigate in more detail the impact of different hyperparameters on LightGBM's performance. 
 
 The used parameter grid is similar to those displayed in the "LightGBM tuning" part of the Table~\ref{tab:init_tuning}. Hyperparameters which have been used in this experiment are:
 
@@ -876,9 +1287,9 @@ The used parameter grid is similar to those displayed in the "LightGBM tuning" p
 \end{itemize}
 
 
-The number of trees has been set to 150 and boosting type is GOSS. For each considered hyperparameter a list of ten values has been chosen and for each of those values the model will evaluated using 10-fold stratified cross-validation scheme. The purpose of the experiment is to check the sensitivity of LightGBM's performance when only a single value of a hyperparameter is set. 
+The number of trees has been set to 150 and boosting type is GOSS. For each considered hyperparameter a list of ten values has been chosen and for each of those values the model will evaluated using 10-fold stratified cross validation scheme. The purpose of the experiment is to check the sensitivity of LightGBM's performance when only a single value of a hyperparameter is modified. 
 
-In this experiment, all evaluations will be performed on a simulated dataset\footnote{Documentation can be found here: \url{https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_classification.html}}. It is a dataset which enables to user to control the number of informative, redundant, repeated and noisy features as well as the "difficulty" of the classification task. It is an excellent benchmark dataset which can be used in evaluation of different Machine Learning models. The number of samples has been set to 10000, number of features to 20, \emph{class\_sep} which controls the separation between classes (and thus the difficulty of classification) has been set to 0.3. The labels are split into two classes with perfect balance. The resulting boxplots for each model evaluation have been presented in Figure~\ref{fig:lightgbm_tuning}.
+In this experiment, all evaluations will be performed on a simulated dataset\footnote{Documentation can be found here: \url{https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_classification.html}}. It is a dataset which enables to user to control the number of informative, redundant, repeated and noisy features as well as the "difficulty" of the classification task. It is an excellent benchmark dataset which can be used in evaluation of different Machine Learning models. The number of samples has been set to 10000, number of features to 20, \emph{class\_sep} which controls the separation between classes (complexity of classification task) has been set to 0.3. The labels are split into two classes with perfect balance. By using such aforementioned simulated dataset, one can directly control the number of discriminative features as well as avoid any peculiar data characteristics which occur in real data. The resulting boxplots for each model evaluation have been presented in Figure~\ref{fig:lightgbm_tuning}.
 
 \begin{figure}[H]
 	\centering
@@ -891,9 +1302,9 @@ Generally, the change of the value of only one hyperparameter may lead to a sign
 
 Accuracy seems to be an increasing function of GOSS hyperparameter top rate (or retain ratio of large gradient data) --- choosing it as high as 0.5 will be the most beneficial. On the other hand, accuracy does not seem to be highly dependent on the value of other rate. Moreover, regularization also has significant on the performance of the model. A proper choice of either $\alpha$ or $\lambda$ can lead to an increase of accuracy as high as 0.03. However, in case of $\alpha$ and $\lambda$ it would be difficult to choose values which are universally the best --- the case of each dataset is different.
 
-Overall, it can be concluded that indeed LightGBM is quite sensitive to hyperparameter tuning. Choosing an appropiate value of only one hyperparameter may lead to a relatively significant increase in accuracy. Thus, it is not surprising that in the experiments which have been described in Sections~\ref{section:baseline}, \ref{section_tpe} and \ref{section_rand} tuned LightGBM was the best overall model among \gbm. Great performance increase as well as computational efficiency and scalability of tuned LightGBM indicate that it has the best potential to be used in practical business use cases, which often demand very highly performing model and short computational time. In case of LightGBM, one could use a very big param grid or high number of iterations in bayesian optimization or randomized search --- the time spent on tuning will not be that long, but it will be definitely worth it.
+Overall, it can be concluded that indeed LightGBM is quite sensitive to hyperparameter tuning. Choosing an appropiate value of only one hyperparameter may lead to a relatively significant increase in accuracy. Thus, it is not surprising that in the experiments which have been described in Sections~\ref{section:baseline}, \ref{section_tpe} and \ref{section_rand} tuned LightGBM was the best overall model among \gbm. Great performance increase as well as computational efficiency and scalability of tuned LightGBM indicate that it has the best potential to be used in practical business use cases, which often demand very highly performing model and short computational time. In case of LightGBM, one could use a very big param grid or high number of iterations in Bayesian optimization or randomized search --- the time spent on tuning will not be that long, but it will be definitely worth it.
 
-\section{Comparison of categorical encodings with CatBoost}
+\section{Comparison of categorical encodings with CatBoost}\label{section:cat_comparison}
 XGBoost, LightGBM and CatBoost are capable of categorical variables processing. However, in case of XGboost, the aforementioned feature is experimental, so it cannot be relied on; according to the creatores of CatBoost \cite{catboost}, LightGBM's implementation of categorical encoding is not so effective. On the other hand, one CatBoost's main features is the ability to perform the encoding very well --- the importance of the categorical encoding has been emphasized greatly in the implementation paper \cite{catboost}. 
 
 In \cite{catboost} it has been mentioned that using the embedded encoding method alongside with the Ordered boosting type, one should avoid the prediction shift completely --- it that case, the random permutations of training examples $\sigma_{cat}$ used for encoding and for training $\sigma_{boost}$ will be the same: $\sigma_{cat} = \sigma_{boost}$. Thus, it is essential to determine if combining Ordered boosting with the embedded encoding algorithm in fact yields the best results. However, four different cases of the encoding will be considered:
@@ -905,7 +1316,7 @@ In \cite{catboost} it has been mentioned that using the embedded encoding method
     \item Preprocessing using standard One-Hot-Encoding (OHE) with Ordered boosting type
 \end{itemize}
 
-Two benchmark datasets which contain categorical features only have been used: \emph{mushrooms} and \emph{amazon} --- they have been described in Table~\ref{tab:datasets}. Model evaluation has been performed by 10-fold stratified cross-validation scheme; the metrics of choice were accuracy, AUC and negative log loss (originally, log loss should be as low as possible, but to retain the convention that higher metric value implies greater performance, the values of log loss have been multiplied by $-1$). The distributions of the metrics values across both aforementioned datasets have been presented in Figure~\ref{fig:lightgbm_tuning}.
+Two benchmark datasets which contain categorical features only have been used: \emph{mushrooms} and \emph{amazon} --- they have been described in Table~\ref{tab:datasets}. Model evaluation has been performed by 10-fold stratified cross validation scheme; the metrics of choice were accuracy, AUC and negative log loss (originally, log loss should be as low as possible, but to retain the convention that higher metric value implies greater performance, the values of log loss have been multiplied by $-1$). The distributions of the metrics values across both aforementioned datasets have been presented in Figure~\ref{fig:lightgbm_tuning}.
 
 \begin{figure}[H]
 	\centering
@@ -928,6 +1339,10 @@ Embedded Ordered CatBoost yields the best performance in terms of AUC score, whi
 As it was expected, CatBoost with OHE takes a long time to run --- the \emph{amazon} dataset originally has only 9 features, but after performing OHE, the number increases to 15626. Thankfully, the features are sparse, thus CatBoost's runtime is not that long. The runtimes in the case of \emph{mushrooms} dataset are much more even. In case of both datasets, it is advised to use the embedded categorical encoding methods, either with Ordered (if the time permits) or Plain boosting type. CatBoost's implementation of categorical encoding works well, fast and is very easy to use. 
 
 CatBoost is the preferred GBM implementation to use with categorical datasets, however, the CatBoost Encoder, which preemptively processes the variables without using CatBoost itself is also a viable option.
+
+\chapter{Conclusions and final remarks}
+
+
 
 \newpage
 \nocite{*} 

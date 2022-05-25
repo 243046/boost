@@ -14,4 +14,5 @@ optuna==2.10.0
 openpyxl
 nltk==3.7
 spacy==3.2.2
+scikit-posthocs
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.2.0/en_core_web_sm-3.2.0.tar.gz
