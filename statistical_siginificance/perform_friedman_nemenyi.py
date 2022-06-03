@@ -79,6 +79,7 @@ def perform_analysis_on_combined_3(scorings=('accuracy', 'f1_score', 'AUC'), var
         c = FriedmanNemenyi(path, '', save=False)
         c.perform_analysis(fontsize=6)
 
+
 if __name__ =='__main__':
     combinations = [
             # ('no_tuning_100_25_trees', '12_datasets_no_tuning_100_25_trees', 'accuracy'),
@@ -104,5 +105,5 @@ if __name__ =='__main__':
     # out_path = f'../plots/statistical_significance/heatmap.pdf'
     # c = FriedmanNemenyi(data_path, out_path, save=False)
     # c.perform_analysis()
-    create_combined_dfs_3()
+    # create_combined_dfs_3()
     perform_analysis_on_combined_3()

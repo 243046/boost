@@ -87,4 +87,4 @@ class FriedmanNemenyi:
         ranks = self._get_friedman_ranks()
         nemenyi_scores = self._test_nemenyi(reject)
         heatmap_ranks = self._prepare_ranks_for_heatmap(ranks)
-        self._plot_heatmap(nemenyi_scores, heatmap_ranks, fontsize=fontsize)
+        # self._plot_heatmap(nemenyi_scores, heatmap_ranks, fontsize=fontsize)
